@@ -15,6 +15,7 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
   userProfile,
   onAddWeightLog
 }) => {
+  const [logDate, setLogDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [weightKg, setWeightKg] = useState('');
   const [fatPct, setFatPct] = useState('');
   const [fatMassKg, setFatMassKg] = useState('');
@@ -69,7 +70,7 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
 
     onAddWeightLog({
       id: Date.now().toString(),
-      log_date: new Date().toISOString().split('T')[0],
+      log_date: logDate || new Date().toISOString().split('T')[0],
       weight_kg: parseFloat(weightKg),
       fat_percentage: fatPct ? parseFloat(fatPct) : undefined,
       fat_mass_kg: fatMassKg ? parseFloat(fatMassKg) : undefined,
@@ -86,6 +87,7 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
     });
 
     onClose();
+    setLogDate(new Date().toISOString().split('T')[0]);
     setWeightKg('');
     setFatPct('');
     setFatMassKg('');
@@ -106,10 +108,20 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
       <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ margin: '0 0 6px 0', fontSize: '1.25rem', fontWeight: 800 }}>Registrar Composición Corporal Completa</h3>
         <p style={{ margin: '0 0 16px 0', color: '#94A3B8', fontSize: '0.82rem' }}>
-          Introduce tus parámetros biométricos (Báscula de bioimpedancia / plicómetro / báscula inteligente).
+          Introduce tus parámetros biométricos por fecha diaria (Báscula de bioimpedancia / inteligente).
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <Box style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', padding: '12px', borderRadius: '10px', marginBottom: '4px' }}>
+            <label style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: 700, display: 'block', marginBottom: '6px' }}>📅 Fecha del Pesaje / Medición</label>
+            <input
+              type="date"
+              required
+              value={logDate}
+              onChange={(e) => setLogDate(e.target.value)}
+              style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(16,185,129,0.4)', color: '#FFF', padding: '10px 12px', borderRadius: '8px', fontSize: '0.9rem' }}
+            />
+          </Box>
           <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
             <Box>
               <label style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Peso (kg) *</label>

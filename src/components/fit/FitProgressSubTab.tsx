@@ -21,13 +21,26 @@ export const FitProgressSubTab: React.FC<FitProgressSubTabProps> = ({
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
 
-  const latestLog = weightLogs[0];
+  const formatMonthLabel = (yearMonthStr: string) => {
+    if (!yearMonthStr) return '';
+    const [year, month] = yearMonthStr.split('-');
+    if (!year || !month) return yearMonthStr;
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const monthName = date.toLocaleString('es-ES', { month: 'long' });
+    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
+  };
+
+  const formattedMonth = formatMonthLabel(selectedMonth);
+
+  const filteredLogs = weightLogs.filter(w => w.log_date && w.log_date.startsWith(selectedMonth));
+  const latestLog = filteredLogs[0] || weightLogs[0];
+
   const latestWeight = latestLog?.weight_kg || userProfile.current_weight_kg;
   const targetWeight = userProfile.target_weight_kg || 65;
   const weightDiff = Math.abs(Number((targetWeight - latestWeight).toFixed(1)));
-  const totalKcalBurned = activities.reduce((sum, a) => sum + (a.calories_burned || 0), 0);
 
-  const filteredLogs = weightLogs.filter(w => w.log_date.startsWith(selectedMonth));
+  const monthlyActivities = activities.filter(a => a.activity_date && a.activity_date.startsWith(selectedMonth));
+  const totalKcalBurned = monthlyActivities.reduce((sum, a) => sum + (a.calories_burned || 0), 0);
 
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -37,7 +50,7 @@ export const FitProgressSubTab: React.FC<FitProgressSubTabProps> = ({
             <TrendingUp size={22} style={{ color: '#10B981' }} /> Evolución Corporal y Rendimiento Mensual
           </h2>
           <p style={{ margin: 0, color: '#94A3B8', fontSize: '0.85rem' }}>
-            Seguimiento de peso, grasa, músculo, agua, masa ósea y balance calórico mensual.
+            Seguimiento de peso diario, masa grasa/muscular y balance calórico mensual ({formattedMonth}).
           </p>
         </Box>
 
@@ -45,8 +58,18 @@ export const FitProgressSubTab: React.FC<FitProgressSubTabProps> = ({
           <input
             type="month"
             value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '8px 12px', borderRadius: '10px', fontSize: '0.85rem' }}
+            onChange={(e) => setSelectedMonth(e.target.value || new Date().toISOString().slice(0, 7))}
+            style={{
+              background: '#1E293B',
+              border: '1px solid rgba(16,185,129,0.4)',
+              color: '#F8FAFC',
+              padding: '8px 14px',
+              borderRadius: '10px',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
           />
 
           <button
@@ -60,7 +83,7 @@ export const FitProgressSubTab: React.FC<FitProgressSubTabProps> = ({
 
       <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
         <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '14px' }}>
-          <div style={{ fontSize: '0.78rem', color: '#94A3B8' }}>Peso Actual</div>
+          <div style={{ fontSize: '0.78rem', color: '#94A3B8' }}>Peso Actual ({latestLog?.log_date ? format_date_display(latestLog.log_date) : 'Hoy'})</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10B981' }}>{latestWeight} kg</div>
           <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Meta: {targetWeight} kg ({weightDiff} kg rest.)</div>
         </Box>
@@ -124,7 +147,7 @@ export const FitProgressSubTab: React.FC<FitProgressSubTabProps> = ({
 
       <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px' }}>
         <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem', fontWeight: 700 }}>
-          Resumen Calórico y Actividad Mensual ({selectedMonth})
+          Resumen Calórico y Actividad Mensual ({formattedMonth})
         </h3>
         <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <Box style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', padding: '12px', borderRadius: '12px' }}>
@@ -133,18 +156,18 @@ export const FitProgressSubTab: React.FC<FitProgressSubTabProps> = ({
           </Box>
           <Box style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', padding: '12px', borderRadius: '12px' }}>
             <span style={{ fontSize: '0.8rem', color: '#93C5FD', display: 'block' }}>Sesiones Registradas</span>
-            <strong style={{ fontSize: '1.4rem', color: '#FFF' }}>{activities.length} sesiones</strong>
+            <strong style={{ fontSize: '1.4rem', color: '#FFF' }}>{monthlyActivities.length} sesiones</strong>
           </Box>
         </Box>
       </Box>
 
       <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px' }}>
         <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 700 }}>
-          Historial Biométrico Detallado ({selectedMonth})
+          Historial Biométrico Detallado ({formattedMonth})
         </h3>
 
         {filteredLogs.length === 0 ? (
-          <p style={{ color: '#94A3B8', fontSize: '0.9rem' }}>No hay registros guardados para el mes seleccionado ({selectedMonth}).</p>
+          <p style={{ color: '#94A3B8', fontSize: '0.9rem' }}>No hay registros guardados para {formattedMonth}.</p>
         ) : (
           <Box style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {filteredLogs.map((log) => (
