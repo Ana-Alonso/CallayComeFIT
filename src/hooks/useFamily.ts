@@ -178,7 +178,11 @@ export const useFamily = ({
         .eq('id', user.id);
 
       if (!error) {
-        trigger_push("Familia Cambiada 🏠", "Cargando datos de la nueva familia...");
+        if (familyId) {
+          trigger_push("Familia Cambiada 🏠", "Cargando datos de la nueva unidad familiar...");
+        } else {
+          trigger_push("Modo Individual 👤", "Has desactivado la unidad familiar activa.");
+        }
         await load_user_profile(user.id);
       }
     } catch (err: any) {

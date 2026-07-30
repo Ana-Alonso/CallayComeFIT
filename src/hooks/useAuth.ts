@@ -85,16 +85,6 @@ export const useAuth = ({
         const families = await load_user_families(userId);
         
         let active_id = prof.active_family_id;
-        // Auto-select the first family if active_family_id is null but user belongs to one or more families
-        if (!active_id && families.length > 0) {
-          active_id = families[0].family_id;
-          await supabase
-            .from('profiles')
-            .update({ active_family_id: active_id })
-            .eq('id', userId);
-          
-          set_profile({ ...(prof as Profile), active_family_id: active_id });
-        }
 
         if (active_id) {
           const active_membership = families.find((f: any) => f.family_id === active_id);

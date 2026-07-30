@@ -126,6 +126,8 @@ export interface FitUserProfile {
   custom_fat_pct: number;
   daily_water_target_ml: number;
   water_logged_ml?: number;
+  daily_sleep_target_hours?: number;
+  sleep_logged_hours?: number;
 }
 
 export interface FitFoodLogItem {

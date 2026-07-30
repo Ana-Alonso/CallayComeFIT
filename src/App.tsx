@@ -546,8 +546,12 @@ export const App = () => {
         <FitTab
           recipes={recipes}
           profile={profile}
+          user={user}
           meal_plan={meal_plan}
           start_date={start_date}
+          on_assign_recipe={handle_assign_recipe}
+          on_remove_assigned_recipe={handle_remove_assigned_recipe}
+          on_change_start_date={handle_change_start_date}
         />
       )}
 

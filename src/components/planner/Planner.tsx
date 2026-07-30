@@ -109,6 +109,7 @@ export const Planner = ({
   const [panic_result, set_panic_result] = useState<{ recipe: Recipe; missing_count: number; pct: number } | null>(null);
   const [confirmar_cocinado_dia, set_confirmar_cocinado_dia] = useState<number | null>(null);
   const [viewing_recipe, set_viewing_recipe] = useState<Recipe | null>(null);
+  const [is_date_modal_open, set_is_date_modal_open] = useState(false);
 
   const handle_view_recipe = (recipe_id: number): void => {
     const recipe = recipes.find(r => r.id === recipe_id) ?? null;
@@ -261,9 +262,9 @@ export const Planner = ({
         <FlexRow style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <FlexRow style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>📅 Inicio del plan:</span>
-            <label
+            <button
+              onClick={() => set_is_date_modal_open(true)}
               style={{
-                position: 'relative',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
@@ -272,31 +273,14 @@ export const Planner = ({
                 borderRadius: 8,
                 padding: '6px 12px',
                 fontSize: 14,
-                color: start_date ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                color: start_date ? '#ffffff' : 'rgba(255,255,255,0.6)',
                 cursor: 'pointer',
-                minWidth: 120,
+                fontWeight: 600
               }}
             >
-              <span style={{ pointerEvents: 'none' }}>
-                {start_date ? format_date_display(start_date) : 'dd/mm/aaaa'}
-              </span>
-              <span style={{ fontSize: 12, pointerEvents: 'none', color: 'rgba(255,255,255,0.4)' }}>✏️</span>
-              <input
-                type="date"
-                value={start_date || ''}
-                onChange={(e) => on_change_start_date(e.target.value || null)}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  opacity: 0,
-                  width: '100%',
-                  height: '100%',
-                  cursor: 'pointer',
-                  border: 'none',
-                  padding: 0,
-                }}
-              />
-            </label>
+              <span>{start_date ? format_date_display(start_date) : 'Seleccionar Fecha 📅'}</span>
+              <span style={{ fontSize: 12, color: '#3B82F6' }}>✏️ Cambiar</span>
+            </button>
           </FlexRow>
           <FlexRow style={{ gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>
@@ -639,6 +623,95 @@ export const Planner = ({
             />
           </Box>
         )}
+      </Dialogo>
+
+      {/* -----------------------------------------------------------------------
+          MODAL: SELECCIONAR FECHA DE INICIO DE PLAN
+      ----------------------------------------------------------------------- */}
+      <Dialogo
+        abierto={is_date_modal_open}
+        on_close={() => set_is_date_modal_open(false)}
+        titulo="📅 Elegir Fecha de Inicio del Plan"
+      >
+        <Box style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+            Selecciona el día en el que comienza tu plan de comidas de 30 días para calcular los días activos y sincronizar con el diario nutricional.
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Boton
+              texto="Hoy 📌"
+              variante="outlined"
+              color="primary"
+              clase_css="btn-sm"
+              on_click={() => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                on_change_start_date(todayStr);
+                set_is_date_modal_open(false);
+              }}
+            />
+            <Boton
+              texto="Mañana 🌅"
+              variante="outlined"
+              color="primary"
+              clase_css="btn-sm"
+              on_click={() => {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomStr = tomorrow.toISOString().split('T')[0];
+                on_change_start_date(tomStr);
+                set_is_date_modal_open(false);
+              }}
+            />
+            <Boton
+              texto="Próximo Lunes 🗓️"
+              variante="outlined"
+              color="primary"
+              clase_css="btn-sm"
+              on_click={() => {
+                const now = new Date();
+                const day = now.getDay();
+                const diff = (day === 0 ? 1 : 8 - day);
+                const nextMon = new Date(now.setDate(now.getDate() + diff));
+                const monStr = nextMon.toISOString().split('T')[0];
+                on_change_start_date(monStr);
+                set_is_date_modal_open(false);
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+            <label style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>O elige una fecha personalizada:</label>
+            <input
+              type="date"
+              value={start_date || ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  on_change_start_date(e.target.value);
+                  set_is_date_modal_open(false);
+                }
+              }}
+              style={{
+                width: '100%',
+                background: '#1c1c24',
+                border: '1px solid #3B82F6',
+                color: '#ffffff',
+                padding: '12px',
+                borderRadius: 8,
+                fontSize: 16,
+                cursor: 'pointer'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+            <Boton
+              texto="Cerrar"
+              variante="text"
+              on_click={() => set_is_date_modal_open(false)}
+            />
+          </div>
+        </Box>
       </Dialogo>
     </PageContainer>
   );

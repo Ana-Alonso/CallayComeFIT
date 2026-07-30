@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Flame,
   Zap,
@@ -14,100 +14,65 @@ import {
   Dumbbell,
   Calendar,
   Upload,
-  Smartphone,
   Watch,
   FileText,
-  CheckCircle
+  Moon,
+  Edit2,
+  X
 } from 'lucide-react';
-import type { Recipe, Profile, MealPlanDay, FitUserProfile, FitFoodLogItem, FitActivity } from '../../types';
-import { get_current_planner_day } from '../../utils/planner_helpers';
-
-interface FoodDbItem {
-  name: string;
-  defaultMeal: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-  unit: string;
-}
-
-const fitFoodDatabase: FoodDbItem[] = [
-  { name: 'Pechuga de Pollo a la plancha', defaultMeal: 'lunch', calories: 165, protein_g: 31.0, carbs_g: 0.0, fat_g: 3.6, unit: '100g' },
-  { name: 'Huevos enteros (2 unidades)', defaultMeal: 'breakfast', calories: 155, protein_g: 13.0, carbs_g: 1.1, fat_g: 11.0, unit: '2 ud' },
-  { name: 'Claras de Huevo (200ml)', defaultMeal: 'breakfast', calories: 104, protein_g: 22.0, carbs_g: 1.4, fat_g: 0.4, unit: '200ml' },
-  { name: 'Arroz Integral cocido', defaultMeal: 'lunch', calories: 130, protein_g: 2.7, carbs_g: 28.0, fat_g: 1.0, unit: '100g' },
-  { name: 'Avena en copos', defaultMeal: 'breakfast', calories: 389, protein_g: 16.9, carbs_g: 66.3, fat_g: 6.9, unit: '100g' },
-  { name: 'Queso fresco batido 0%', defaultMeal: 'snack', calories: 46, protein_g: 8.0, carbs_g: 3.5, fat_g: 0.1, unit: '100g' },
-  { name: 'Lomo de Salmón al horno', defaultMeal: 'dinner', calories: 208, protein_g: 20.0, carbs_g: 0.0, fat_g: 13.0, unit: '100g' },
-  { name: 'Aguacate fresco', defaultMeal: 'dinner', calories: 160, protein_g: 2.0, carbs_g: 8.5, fat_g: 14.7, unit: '100g' },
-  { name: 'Atún al natural (1 lata)', defaultMeal: 'lunch', calories: 85, protein_g: 19.5, carbs_g: 0.0, fat_g: 0.8, unit: '1 lata' },
-  { name: 'Proteína Whey en Polvo (1 cazo)', defaultMeal: 'snack', calories: 120, protein_g: 24.0, carbs_g: 2.0, fat_g: 1.5, unit: '30g' },
-  { name: 'Plátano maduro', defaultMeal: 'snack', calories: 89, protein_g: 1.1, carbs_g: 22.8, fat_g: 0.3, unit: '1 ud' },
-  { name: 'Manzana verde', defaultMeal: 'snack', calories: 52, protein_g: 0.3, carbs_g: 13.8, fat_g: 0.2, unit: '1 ud' },
-  { name: 'Solomillo de Pavo magro', defaultMeal: 'dinner', calories: 110, protein_g: 24.0, carbs_g: 0.0, fat_g: 1.5, unit: '100g' },
-  { name: 'Pan de Espelta integral', defaultMeal: 'breakfast', calories: 160, protein_g: 7.0, carbs_g: 28.0, fat_g: 2.0, unit: '2 rebanadas' },
-  { name: 'Aceite de Oliva Virgen Extra', defaultMeal: 'lunch', calories: 119, protein_g: 0.0, carbs_g: 0.0, fat_g: 13.5, unit: '1 cda (14ml)' },
-  { name: 'Crema de Cacahuete 100%', defaultMeal: 'snack', calories: 588, protein_g: 25.0, carbs_g: 20.0, fat_g: 50.0, unit: '100g' },
-  { name: 'Yogur Griego 0% materia grasa', defaultMeal: 'snack', calories: 59, protein_g: 10.0, carbs_g: 3.6, fat_g: 0.4, unit: '100g' },
-  { name: 'Tofu firme', defaultMeal: 'lunch', calories: 76, protein_g: 8.0, carbs_g: 1.9, fat_g: 4.8, unit: '100g' }
-];
+import type { User } from '@supabase/supabase-js';
+import type { Recipe, Profile, MealPlanDay, FitFoodLogItem, FitActivity } from '../../types';
+import { get_current_planner_day, format_date_display } from '../../utils/planner_helpers';
+import { useFitDatabase } from '../../hooks/useFitDatabase';
+import { 
+  searchProducts, 
+  getProductMacros, 
+  saveSupermarketProductMacros, 
+  calculateRecipeNutritionalMacros,
+  formatSupermarketName,
+  type SuperMarketProduct, 
+  type SuperMarketProductMacro
+} from '../../services/supermarket_api';
 
 interface FitTabProps {
   recipes: Recipe[];
   profile: Profile | null;
+  user?: User | null;
   meal_plan?: MealPlanDay[];
   start_date?: string | null;
+  on_assign_recipe?: (day: number, type: 'desayuno' | 'comida' | 'cena', slot_index: number, recipe_id: number) => void;
+  on_remove_assigned_recipe?: (day: number, type: 'desayuno' | 'comida' | 'cena', slot_index: number) => void;
+  on_change_start_date?: (date: string | null) => void;
 }
 
-export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }) => {
+export const FitTab: React.FC<FitTabProps> = ({ 
+  recipes, 
+  profile,
+  user, 
+  meal_plan, 
+  start_date,
+  on_assign_recipe,
+  on_remove_assigned_recipe,
+  on_change_start_date
+}) => {
   // ---------------------------------------------------------------------------
-  // 1. ESTADO FIT (LOCAL STORAGE CON SUPABASE SYNC FALLBACK)
+  // 1. ESTADO FIT CON PERSISTENCIA POSTGRESQL (SUPABASE) & LOCALSTORAGE
   // ---------------------------------------------------------------------------
-  const defaultUserProfile: FitUserProfile = {
-    age: 28,
-    gender: 'female',
-    height_cm: 168,
-    current_weight_kg: 68.0,
-    target_weight_kg: 63.0,
-    activity_level: 'moderate',
-    fitness_goal: 'fat_loss',
-    bmr: 1460,
-    tdee: 2260,
-    daily_calorie_target: 1808,
-    macro_preset: 'high_protein',
-    custom_protein_pct: 40,
-    custom_carb_pct: 35,
-    custom_fat_pct: 25,
-    daily_water_target_ml: 2500,
-    water_logged_ml: 1750
-  };
+  const {
+    userProfile,
+    setUserProfile,
+    foodLogs,
+    setFoodLogs,
+    addFoodLog,
+    removeFoodLog,
+    activities,
+    setActivities,
+    addActivity,
+    removeActivity,
+    updateActivity
+  } = useFitDatabase(user || null);
 
-  const defaultFoodLogs: FitFoodLogItem[] = [
-    { id: '1', meal_type: 'breakfast', food_name: 'Tortilla Fit de Clara y Pavo', servings: 1, calories: 260, protein_g: 32, carbs_g: 4, fat_g: 12 },
-    { id: '2', meal_type: 'breakfast', food_name: 'Café solo con Bebida de Almendra', servings: 1, calories: 25, protein_g: 1, carbs_g: 2, fat_g: 1 },
-    { id: '3', meal_type: 'lunch', food_name: 'Pechuga de Pollo Calla y Come Fit + Arroz Integral', servings: 1, calories: 520, protein_g: 55, carbs_g: 58, fat_g: 8 },
-    { id: '4', meal_type: 'dinner', food_name: 'Ensalada de Atún al Natural y Aguacate', servings: 1, calories: 335, protein_g: 35, carbs_g: 8, fat_g: 18 }
-  ];
-
-  const defaultActivities: FitActivity[] = [
-    { id: 'act-1', activity_date: 'Hoy, 10:30 AM', source: 'health_connect', activity_type: 'workout', title: 'Carrera con Reloj / Pulsera de Actividad', duration_minutes: 32, distance_km: 6.4, calories_burned: 380, avg_heart_rate: 152 }
-  ];
-
-  const [userProfile, setUserProfile] = useState<FitUserProfile>(() => {
-    const saved = localStorage.getItem('fit_user_profile');
-    return saved ? JSON.parse(saved) : defaultUserProfile;
-  });
-
-  const [foodLogs, setFoodLogs] = useState<FitFoodLogItem[]>(() => {
-    const saved = localStorage.getItem('fit_food_logs');
-    return saved ? JSON.parse(saved) : defaultFoodLogs;
-  });
-
-  const [activities, setActivities] = useState<FitActivity[]>(() => {
-    const saved = localStorage.getItem('fit_activities');
-    return saved ? JSON.parse(saved) : defaultActivities;
-  });
+  const [editingActivity, setEditingActivity] = useState<FitActivity | null>(null);
 
   const [subTab, setSubTab] = useState<'dashboard' | 'diary' | 'goals' | 'activity' | 'recipes'>('dashboard');
 
@@ -120,23 +85,83 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
   const [newFoodProtein, setNewFoodProtein] = useState('');
   const [newFoodCarbs, setNewFoodCarbs] = useState('');
   const [newFoodFat, setNewFoodFat] = useState('');
-  const [selectedBaseFood, setSelectedBaseFood] = useState<FoodDbItem | null>(null);
+  const [selectedBaseFood, setSelectedBaseFood] = useState<SuperMarketProductMacro | null>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showFoodSuggestions, setShowFoodSuggestions] = useState(false);
 
-  const handleSelectFoodItem = (item: FoodDbItem) => {
-    setSelectedBaseFood(item);
-    setNewFoodName(item.name);
-    setModalMealType(item.defaultMeal);
-    setNewFoodKcal(Math.round(item.calories * newFoodServings).toString());
-    setNewFoodProtein((item.protein_g * newFoodServings).toFixed(1));
-    setNewFoodCarbs((item.carbs_g * newFoodServings).toFixed(1));
-    setNewFoodFat((item.fat_g * newFoodServings).toFixed(1));
+  // SuperMarketAPI State
+  const [supermarketSearchResults, setSupermarketSearchResults] = useState<SuperMarketProduct[]>([]);
+  const [isSearchingSupermarket, setIsSearchingSupermarket] = useState(false);
+
+  // Modal: Registrar Nuevas Macros en SuperMarketAPI
+  const [isRegisterMacroOpen, setIsRegisterMacroOpen] = useState(false);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const [regMacroName, setRegMacroName] = useState('');
+  const [regMacroSuper, setRegMacroSuper] = useState('Mercadona');
+  const [regMacroKcal, setRegMacroKcal] = useState('');
+  const [regMacroProtein, setRegMacroProtein] = useState('');
+  const [regMacroCarbs, setRegMacroCarbs] = useState('');
+  const [regMacroFat, setRegMacroFat] = useState('');
+
+  // Búsqueda dinámica en SuperMarketAPI y Catálogo de Recetas
+  const handleFoodNameChange = async (query: string) => {
+    setNewFoodName(query);
+    setShowFoodSuggestions(true);
+    if (!query.trim() || query.length < 2) {
+      setSupermarketSearchResults([]);
+      return;
+    }
+
+    setIsSearchingSupermarket(true);
+    try {
+      const results = await searchProducts(query);
+      setSupermarketSearchResults(results);
+    } catch (e) {
+      console.warn('SuperMarketAPI live search fallback active');
+    } finally {
+      setIsSearchingSupermarket(false);
+    }
+  };
+
+  const handleSelectRecipeItem = (recipe: Recipe) => {
+    const macroRes = calculateRecipeNutritionalMacros(recipe);
+    setSelectedRecipe(recipe);
+    setSelectedBaseFood(null);
+    setNewFoodName(recipe.name);
+    setNewFoodKcal(Math.round(macroRes.totalCalories * newFoodServings).toString());
+    setNewFoodProtein((macroRes.totalProtein * newFoodServings).toFixed(1));
+    setNewFoodCarbs((macroRes.totalCarbs * newFoodServings).toFixed(1));
+    setNewFoodFat((macroRes.totalFat * newFoodServings).toFixed(1));
+    setShowFoodSuggestions(false);
+  };
+
+  const handleSelectSupermarketItem = (item: SuperMarketProduct) => {
+    const macro = getProductMacros(item.nombre, item.supermercado);
+    setSelectedRecipe(null);
+    setNewFoodName(`${item.nombre} (${item.supermercado.toUpperCase()})`);
+    if (macro) {
+      setSelectedBaseFood(macro);
+      setNewFoodKcal(Math.round(macro.calories * newFoodServings).toString());
+      setNewFoodProtein((macro.protein_g * newFoodServings).toFixed(1));
+      setNewFoodCarbs((macro.carbs_g * newFoodServings).toFixed(1));
+      setNewFoodFat((macro.fat_g * newFoodServings).toFixed(1));
+    } else {
+      setSelectedBaseFood(null);
+      setRegMacroName(item.nombre);
+      setRegMacroSuper(formatSupermarketName(item.supermercado));
+    }
     setShowFoodSuggestions(false);
   };
 
   const handleServingsChange = (servings: number) => {
     setNewFoodServings(servings);
-    if (selectedBaseFood) {
+    if (selectedRecipe) {
+      const macroRes = calculateRecipeNutritionalMacros(selectedRecipe);
+      setNewFoodKcal(Math.round(macroRes.totalCalories * servings).toString());
+      setNewFoodProtein((macroRes.totalProtein * servings).toFixed(1));
+      setNewFoodCarbs((macroRes.totalCarbs * servings).toFixed(1));
+      setNewFoodFat((macroRes.totalFat * servings).toFixed(1));
+    } else if (selectedBaseFood) {
       setNewFoodKcal(Math.round(selectedBaseFood.calories * servings).toString());
       setNewFoodProtein((selectedBaseFood.protein_g * servings).toFixed(1));
       setNewFoodCarbs((selectedBaseFood.carbs_g * servings).toFixed(1));
@@ -144,19 +169,36 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
     }
   };
 
-  // Google Health Connect / Wearables Sync State
-  const [isHealthConnectActive, setIsHealthConnectActive] = useState<boolean>(() => {
-    return localStorage.getItem('fit_health_connect_active') === 'true';
-  });
+  const handleSaveCustomProductMacro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regMacroName || !regMacroKcal) return;
 
-  const handleToggleHealthConnect = () => {
-    const next = !isHealthConnectActive;
-    setIsHealthConnectActive(next);
-    localStorage.setItem('fit_health_connect_active', String(next));
-    if (next) {
-      alert('¡Sincronización con Health Connect & Relojes de Actividad activada! Tus entrenamientos se registrarán directamente.');
-    }
+    const macro: SuperMarketProductMacro = {
+      nombre: regMacroName,
+      supermercado: regMacroSuper,
+      calories: parseFloat(regMacroKcal) || 0,
+      protein_g: parseFloat(regMacroProtein) || 0,
+      carbs_g: parseFloat(regMacroCarbs) || 0,
+      fat_g: parseFloat(regMacroFat) || 0,
+      unit: '100g'
+    };
+
+    await saveSupermarketProductMacros(macro);
+
+    setSelectedBaseFood(macro);
+    setNewFoodName(`${macro.nombre} (${macro.supermercado.toUpperCase()})`);
+    setNewFoodKcal(Math.round(macro.calories * newFoodServings).toString());
+    setNewFoodProtein((macro.protein_g * newFoodServings).toFixed(1));
+    setNewFoodCarbs((macro.carbs_g * newFoodServings).toFixed(1));
+    setNewFoodFat((macro.fat_g * newFoodServings).toFixed(1));
+
+    setIsRegisterMacroOpen(false);
+    alert(`¡Macros de "${macro.nombre}" guardados y subidos a la plataforma SuperMarketAPI!`);
   };
+
+  const [customSleepInput, setCustomSleepInput] = useState<string>(() => {
+    return (userProfile.sleep_logged_hours || 7.5).toString();
+  });
 
   // Importar Archivo GPX / FIT / TCX
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,14 +229,13 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
         avg_heart_rate: 142
       };
 
-      setActivities(prev => [newActivity, ...prev]);
+      addActivity(newActivity);
       alert(`¡Archivo de entrenamiento "${file.name}" cargado con éxito! +${calories} kcal registradas.`);
     };
 
     reader.readAsText(file);
   };
 
-  // Formulario Manual de Actividad
   const [manualTitle, setManualTitle] = useState('');
   const [manualKcal, setManualKcal] = useState('');
   const [manualDuration, setManualDuration] = useState('30');
@@ -207,7 +248,7 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
 
     const newAct: FitActivity = {
       id: `manual-${Date.now()}`,
-      activity_date: 'Hoy (Manual)',
+      activity_date: new Date().toISOString(),
       source: 'manual',
       activity_type: 'workout',
       title: manualTitle,
@@ -217,7 +258,7 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
       avg_heart_rate: parseInt(manualHeartRate) || undefined
     };
 
-    setActivities(prev => [newAct, ...prev]);
+    addActivity(newAct);
     setManualTitle('');
     setManualKcal('');
     setManualDistance('');
@@ -227,91 +268,55 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
 
   const [isImportRecipeOpen, setIsImportRecipeOpen] = useState(false);
 
-  // Persistence
-  useEffect(() => {
-    localStorage.setItem('fit_user_profile', JSON.stringify(userProfile));
-  }, [userProfile]);
-
-  useEffect(() => {
-    localStorage.setItem('fit_food_logs', JSON.stringify(foodLogs));
-  }, [foodLogs]);
-
-  useEffect(() => {
-    localStorage.setItem('fit_activities', JSON.stringify(activities));
-  }, [activities]);
-
-  // ---------------------------------------------------------------------------
-  // 2. MOTOR METABÓLICO (BMR, TDEE, MACROS)
-  // ---------------------------------------------------------------------------
   const calculateMetabolism = () => {
-    const { age, gender, height_cm, current_weight_kg, activity_level, fitness_goal, macro_preset, custom_protein_pct, custom_carb_pct, custom_fat_pct } = userProfile;
+    const w = userProfile.current_weight_kg;
+    const h = userProfile.height_cm;
+    const a = userProfile.age;
 
-    let bmr = 0;
-    if (gender === 'male') {
-      bmr = (10 * current_weight_kg) + (6.25 * height_cm) - (5 * age) + 5;
-    } else {
-      bmr = (10 * current_weight_kg) + (6.25 * height_cm) - (5 * age) - 161;
-    }
+    let bmr = Math.round((10 * w) + (6.25 * h) - (5 * a) + (userProfile.gender === 'male' ? 5 : -161));
+    if (bmr < 800) bmr = 1400;
 
-    const activityMultipliers = {
+    const actMultipliers: Record<string, number> = {
       sedentary: 1.2,
       light: 1.375,
       moderate: 1.55,
-      active: 1.725,
-      very_active: 1.9
+      very_active: 1.725,
+      extra_active: 1.9
     };
+    const mult = actMultipliers[userProfile.activity_level] || 1.55;
+    const tdee = Math.round(bmr * mult);
 
-    const tdee = Math.round(bmr * (activityMultipliers[activity_level] || 1.55));
-
-    let targetCalories = tdee;
-    if (fitness_goal === 'fat_loss') {
-      targetCalories = Math.round(tdee * 0.80);
-    } else if (fitness_goal === 'muscle_gain') {
-      targetCalories = Math.round(tdee * 1.15);
-    }
+    let targetCal = tdee;
+    if (userProfile.fitness_goal === 'fat_loss') targetCal = Math.round(tdee * 0.80);
+    else if (userProfile.fitness_goal === 'muscle_gain') targetCal = Math.round(tdee * 1.15);
 
     let pPct = 30, cPct = 40, fPct = 30;
-    if (macro_preset === 'high_protein') {
-      pPct = 40; cPct = 35; fPct = 25;
-    } else if (macro_preset === 'balanced') {
-      pPct = 30; cPct = 40; fPct = 30;
-    } else if (macro_preset === 'low_carb') {
-      pPct = 45; cPct = 20; fPct = 35;
-    } else if (macro_preset === 'custom') {
-      pPct = custom_protein_pct;
-      cPct = custom_carb_pct;
-      fPct = custom_fat_pct;
+    if (userProfile.macro_preset === 'high_protein') { pPct = 40; cPct = 35; fPct = 25; }
+    else if (userProfile.macro_preset === 'low_carb') { pPct = 45; cPct = 20; fPct = 35; }
+    else if (userProfile.macro_preset === 'custom') {
+      pPct = userProfile.custom_protein_pct || 30;
+      cPct = userProfile.custom_carb_pct || 40;
+      fPct = userProfile.custom_fat_pct || 30;
     }
 
-    const targetProteinGrams = Math.round((targetCalories * (pPct / 100)) / 4);
-    const targetCarbsGrams = Math.round((targetCalories * (cPct / 100)) / 4);
-    const targetFatGrams = Math.round((targetCalories * (fPct / 100)) / 9);
+    const pGrams = Math.round((targetCal * (pPct / 100)) / 4);
+    const cGrams = Math.round((targetCal * (cPct / 100)) / 4);
+    const fGrams = Math.round((targetCal * (fPct / 100)) / 9);
 
-    return {
-      bmr: Math.round(bmr),
-      tdee,
-      targetCalories,
-      pPct, cPct, fPct,
-      targetProteinGrams,
-      targetCarbsGrams,
-      targetFatGrams
-    };
+    return { bmr, tdee, targetCalories: targetCal, pPct, cPct, fPct, targetProteinGrams: pGrams, targetCarbsGrams: cGrams, targetFatGrams: fGrams };
   };
 
   const meta = calculateMetabolism();
 
-  // Calculated totals consumed today
   const consumedKcal = foodLogs.reduce((sum, item) => sum + item.calories, 0);
   const consumedP = foodLogs.reduce((sum, item) => sum + item.protein_g, 0);
   const consumedC = foodLogs.reduce((sum, item) => sum + item.carbs_g, 0);
   const consumedF = foodLogs.reduce((sum, item) => sum + item.fat_g, 0);
 
-  // Strava Burn
   const burnedKcal = activities.reduce((sum, act) => sum + act.calories_burned, 0);
   const remainingKcal = meta.targetCalories - consumedKcal + burnedKcal;
   const calPercent = Math.min(100, Math.round((consumedKcal / (meta.targetCalories + burnedKcal)) * 100));
 
-  // Handlers
   const currentDayNum = get_current_planner_day(start_date ?? null) || 1;
   const todayPlan = meal_plan?.find(d => d.day === currentDayNum);
 
@@ -320,23 +325,23 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
       alert(`No se ha encontrado el plan del Día ${currentDayNum} en el planificador.`);
       return;
     }
-    const newLogs: FitFoodLogItem[] = [];
 
     const importSlot = (slotArray: Array<number | null>, mealType: 'breakfast' | 'lunch' | 'dinner') => {
       slotArray.forEach(recipeId => {
         if (recipeId) {
           const recipe = recipes.find(r => r.id === recipeId);
           if (recipe) {
-            newLogs.push({
+            const macroResult = calculateRecipeNutritionalMacros(recipe);
+            addFoodLog({
               id: `plan-${Date.now()}-${Math.random()}`,
               meal_type: mealType,
               food_name: `${recipe.name} (Plan Calla y Come)`,
               callaycome_recipe_id: recipe.id,
               servings: 1,
-              calories: mealType === 'lunch' ? 520 : mealType === 'dinner' ? 380 : 280,
-              protein_g: mealType === 'lunch' ? 45 : mealType === 'dinner' ? 35 : 20,
-              carbs_g: mealType === 'lunch' ? 55 : mealType === 'dinner' ? 30 : 35,
-              fat_g: mealType === 'lunch' ? 10 : mealType === 'dinner' ? 9 : 6
+              calories: macroResult.totalCalories || 300,
+              protein_g: macroResult.totalProtein || 20,
+              carbs_g: macroResult.totalCarbs || 30,
+              fat_g: macroResult.totalFat || 10
             });
           }
         }
@@ -347,13 +352,9 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
     importSlot(todayPlan.comida, 'lunch');
     importSlot(todayPlan.cena, 'dinner');
 
-    if (newLogs.length > 0) {
-      setFoodLogs(prev => [...prev, ...newLogs]);
-      alert(`¡Se han importado ${newLogs.length} comida(s) planificada(s) para hoy (Día ${currentDayNum}) a tu diario Fit!`);
-    } else {
-      alert(`No hay recetas asignadas en el planificador para hoy (Día ${currentDayNum}). ¡Añade recetas desde la pestaña 'Plan del Mes'!`);
-    }
+    alert(`¡Comidas planificadas para hoy (Día ${currentDayNum}) importadas a tu diario Fit!`);
   };
+
   const handleAddWater = (ml: number) => {
     setUserProfile(prev => ({ ...prev, water_logged_ml: (prev.water_logged_ml || 0) + ml }));
   };
@@ -366,10 +367,13 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
     e.preventDefault();
     if (!newFoodName || !newFoodKcal) return;
 
+    const recipeId = selectedRecipe?.id || (recipes.find(r => r.name.toLowerCase() === newFoodName.toLowerCase())?.id);
+
     const newItem: FitFoodLogItem = {
       id: Date.now().toString(),
       meal_type: modalMealType,
       food_name: newFoodName,
+      callaycome_recipe_id: recipeId,
       servings: Number(newFoodServings) || 1,
       calories: parseInt(newFoodKcal) || 0,
       protein_g: parseFloat(newFoodProtein) || 0,
@@ -377,17 +381,36 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
       fat_g: parseFloat(newFoodFat) || 0
     };
 
-    setFoodLogs(prev => [...prev, newItem]);
+    addFoodLog(newItem);
+
+    // Sincronizar automáticamente con el diario del día sólo si NO hay unidad familiar activa compartida
+    const hasActiveFamily = Boolean(profile?.active_family_id);
+    if (recipeId && on_assign_recipe && !hasActiveFamily) {
+      const currentDayNum = get_current_planner_day(start_date || null) || 1;
+      const plannerMealType = modalMealType === 'breakfast' ? 'desayuno' : modalMealType === 'lunch' ? 'comida' : 'cena';
+      on_assign_recipe(currentDayNum, plannerMealType, 0, recipeId);
+    }
+
     setIsAddFoodOpen(false);
     setNewFoodName('');
     setNewFoodKcal('');
     setNewFoodProtein('');
     setNewFoodCarbs('');
     setNewFoodFat('');
+    setSelectedRecipe(null);
   };
 
   const handleDeleteFood = (id: string) => {
-    setFoodLogs(prev => prev.filter(item => item.id !== id));
+    const itemToDelete = foodLogs.find(f => f.id === id);
+    removeFoodLog(id);
+
+    // Sincronizar borrado con el diario del día sólo en modo individual (sin familia activa)
+    const hasActiveFamily = Boolean(profile?.active_family_id);
+    if (itemToDelete && itemToDelete.callaycome_recipe_id && on_remove_assigned_recipe && !hasActiveFamily) {
+      const currentDayNum = get_current_planner_day(start_date || null) || 1;
+      const plannerMealType = itemToDelete.meal_type === 'breakfast' ? 'desayuno' : itemToDelete.meal_type === 'lunch' ? 'comida' : 'cena';
+      on_remove_assigned_recipe(currentDayNum, plannerMealType, 0);
+    }
   };
 
   return (
@@ -398,40 +421,75 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
         background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(249, 115, 22, 0.08))',
         border: '1px solid rgba(16, 185, 129, 0.25)',
         borderRadius: '16px',
-        padding: '20px 24px',
-        marginBottom: '24px',
+        padding: '16px',
+        marginBottom: '20px',
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px'
+        flexDirection: 'column',
+        gap: '12px'
       }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <Zap style={{ color: '#10B981', fill: '#10B981' }} size={24} />
-            <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>Calla y Come <span style={{ color: '#10B981' }}>FIT</span></h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Zap style={{ color: '#10B981', fill: '#10B981' }} size={24} />
+              <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>Calla y Come <span style={{ color: '#10B981' }}>FIT</span></h1>
+            </div>
+            <p style={{ margin: 0, color: '#94A3B8', fontSize: '0.85rem' }}>
+              Seguimiento de nutrición, macronutrientes y gasto energético de tu actividad.
+            </p>
           </div>
-          <p style={{ margin: 0, color: '#94A3B8', fontSize: '0.9rem' }}>
-            Seguimiento de nutrición, macronutrientes y gasto energético sincronizado con Strava.
-          </p>
+
+          {on_change_start_date && (
+            <button
+              type="button"
+              onClick={() => setIsDateModalOpen(true)}
+              style={{
+                background: 'rgba(59,130,246,0.15)',
+                border: '1px solid rgba(59,130,246,0.3)',
+                color: '#60A5FA',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              📅 Inicio Plan: {start_date ? format_date_display(start_date) : 'Elegir Fecha'} ✏️
+            </button>
+          )}
         </div>
 
-        {/* Sub-navegación dentro de Fit */}
-        <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        {/* Sub-navegación dentro de Fit (Scrollable en móviles) */}
+        <div style={{
+          display: 'flex',
+          gap: '6px',
+          background: 'rgba(0,0,0,0.3)',
+          padding: '6px',
+          borderRadius: '24px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          overflowX: 'auto',
+          maxWidth: '100%',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none'
+        }}>
           <button
             onClick={() => setSubTab('dashboard')}
             style={{
               background: subTab === 'dashboard' ? '#10B981' : 'transparent',
               color: '#FFF',
               border: 'none',
-              padding: '6px 14px',
-              borderRadius: '20px',
+              padding: '8px 14px',
+              borderRadius: '18px',
               fontWeight: 600,
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             <Activity size={15} /> Resumen
@@ -442,17 +500,19 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
               background: subTab === 'diary' ? '#10B981' : 'transparent',
               color: '#FFF',
               border: 'none',
-              padding: '6px 14px',
-              borderRadius: '20px',
+              padding: '8px 14px',
+              borderRadius: '18px',
               fontWeight: 600,
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Utensils size={15} /> Diario Nutricional
+            <Utensils size={15} /> Diario
           </button>
           <button
             onClick={() => setSubTab('goals')}
@@ -460,17 +520,19 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
               background: subTab === 'goals' ? '#10B981' : 'transparent',
               color: '#FFF',
               border: 'none',
-              padding: '6px 14px',
-              borderRadius: '20px',
+              padding: '8px 14px',
+              borderRadius: '18px',
               fontWeight: 600,
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Target size={15} /> Objetivos & Macros
+            <Target size={15} /> Objetivos
           </button>
           <button
             onClick={() => setSubTab('activity')}
@@ -478,17 +540,19 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
               background: subTab === 'activity' ? '#10B981' : 'transparent',
               color: '#FFF',
               border: 'none',
-              padding: '6px 14px',
-              borderRadius: '20px',
+              padding: '8px 14px',
+              borderRadius: '18px',
               fontWeight: 600,
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Watch size={15} style={{ color: subTab === 'activity' ? '#FFF' : '#10B981' }} /> Entrenamientos & Pulseras
+            <Watch size={15} style={{ color: subTab === 'activity' ? '#FFF' : '#10B981' }} /> Entrenamientos
           </button>
           <button
             onClick={() => setSubTab('recipes')}
@@ -496,14 +560,16 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
               background: subTab === 'recipes' ? '#10B981' : 'transparent',
               color: '#FFF',
               border: 'none',
-              padding: '6px 14px',
-              borderRadius: '20px',
+              padding: '8px 14px',
+              borderRadius: '18px',
               fontWeight: 600,
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             <BookOpen size={15} /> Recetas Fit
@@ -515,7 +581,7 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
           SUBTAB 1: DASHBOARD
       ----------------------------------------------------------------------- */}
       {subTab === 'dashboard' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
           
           {/* Tarjeta 1: Balance Calórico */}
           <div style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px' }}>
@@ -546,7 +612,7 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
               <div style={{ fontSize: '1.2rem', color: '#64748B' }}>+</div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10B981' }}>{burnedKcal}</div>
-                <div style={{ color: '#94A3B8' }}>Strava Burn</div>
+                <div style={{ color: '#94A3B8' }}>Activity Burn</div>
               </div>
             </div>
 
@@ -629,7 +695,65 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
             </div>
           </div>
 
-          {/* Tarjeta 4: Entrenamientos Ingeridos Card */}
+          {/* Tarjeta 4: Monitor de Sueño & Descanso (Entrada Manual Pura) */}
+          <div style={{ background: '#121826', border: '1px solid rgba(139,92,246,0.3)', borderRadius: '16px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: '#A78BFA' }}>
+                <Moon size={20} /> Sueño & Descanso
+              </h3>
+              <span style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid #8B5CF6', color: '#C4B5FD', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                Registro Manual ✏️
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: '#FFF' }}>
+                {userProfile.sleep_logged_hours || 0} <span style={{ fontSize: '1rem', color: '#C4B5FD', fontWeight: 600 }}>horas de sueño registradas</span>
+              </div>
+              <div style={{ color: '#94A3B8', fontSize: '0.8rem', marginTop: '2px' }}>
+                Introduce abajo tus horas exactas de descanso nocturno de hoy:
+              </div>
+            </div>
+
+            {/* Formulario de Entrada Manual de Sueño */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const val = parseFloat(customSleepInput);
+                if (!isNaN(val) && val >= 0) {
+                  setUserProfile(prev => ({ ...prev, sleep_logged_hours: val }));
+                  alert(`¡Guardadas ${val} horas de sueño!`);
+                }
+              }}
+              style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}
+            >
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="24"
+                value={customSleepInput}
+                onChange={(e) => setCustomSleepInput(e.target.value)}
+                placeholder="Ej. 7.5"
+                style={{ flex: 1, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(139,92,246,0.4)', color: '#FFF', padding: '8px 12px', borderRadius: '10px', fontSize: '0.9rem' }}
+              />
+              <button
+                type="submit"
+                style={{ background: '#8B5CF6', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                Guardar Horas
+              </button>
+            </form>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button onClick={() => { setUserProfile(prev => ({ ...prev, sleep_logged_hours: 6.5 })); setCustomSleepInput('6.5'); }} style={{ flex: 1, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#C4B5FD', padding: '6px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>6.5 h</button>
+              <button onClick={() => { setUserProfile(prev => ({ ...prev, sleep_logged_hours: 7.0 })); setCustomSleepInput('7.0'); }} style={{ flex: 1, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#C4B5FD', padding: '6px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>7.0 h</button>
+              <button onClick={() => { setUserProfile(prev => ({ ...prev, sleep_logged_hours: 7.5 })); setCustomSleepInput('7.5'); }} style={{ flex: 1, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#C4B5FD', padding: '6px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>7.5 h</button>
+              <button onClick={() => { setUserProfile(prev => ({ ...prev, sleep_logged_hours: 8.0 })); setCustomSleepInput('8.0'); }} style={{ flex: 1, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#C4B5FD', padding: '6px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>8.0 h</button>
+            </div>
+          </div>
+
+          {/* Tarjeta 5: Entrenamientos Ingeridos Card */}
           <div style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -664,6 +788,12 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
       ----------------------------------------------------------------------- */}
       {subTab === 'diary' && (
         <div>
+          {profile?.active_family_id && (
+            <div style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', padding: '12px 16px', borderRadius: '12px', fontSize: '0.82rem', color: '#93C5FD', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>👨‍👩‍👧‍👦 <strong>Modo Familia Activa</strong>: Tu diario Fit registra tus alimentos de forma personal para no modificar el menú compartido del planificador de tu familia.</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 style={{ margin: 0, fontSize: '1.4rem' }}>Diario Nutricional y Registro de Alimentos</h2>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -678,6 +808,12 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
                 style={{ background: 'rgba(255,255,255,0.06)', color: '#FFF', border: '1px solid rgba(255,255,255,0.1)', padding: '10px 16px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <Plus size={16} /> Añadir Alimento
+              </button>
+              <button
+                onClick={() => setIsRegisterMacroOpen(true)}
+                style={{ background: 'rgba(59,130,246,0.15)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.3)', padding: '10px 16px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={16} /> 🛒 Registrar Macros en SuperMarketAPI
               </button>
               <button
                 onClick={() => setIsImportRecipeOpen(true)}
@@ -888,39 +1024,10 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
       )}
 
       {/* -----------------------------------------------------------------------
-          SUBTAB 4: ENTRENAMIENTOS & PULSERAS (OPEN HEALTH SYNC HUB)
+          SUBTAB 4: REGISTRO DE ACTIVIDADES Y ENTRENAMIENTOS
       ----------------------------------------------------------------------- */}
       {subTab === 'activity' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Tarjeta 1: Sincronización Gratuita con Google Health Connect & Mi Fitness */}
-          <div style={{ background: '#121826', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '16px', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Smartphone size={24} style={{ color: '#10B981' }} /> Sincronización Abierta: Google Health Connect & Dispositivos de Salud
-              </h3>
-              <button
-                onClick={handleToggleHealthConnect}
-                style={{
-                  background: isHealthConnectActive ? '#10B981' : 'rgba(255,255,255,0.1)',
-                  color: '#FFF',
-                  border: isHealthConnectActive ? 'none' : '1px solid rgba(255,255,255,0.2)',
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <CheckCircle size={16} /> {isHealthConnectActive ? '✓ Sincronizado en Segundo Plano' : 'Activar Conexión Directa (Gratis)'}
-              </button>
-            </div>
-            <p style={{ color: '#94A3B8', fontSize: '0.88rem', margin: 0, lineHeight: '1.5' }}>
-              Tu <strong>pulsera de actividad o reloj inteligente</strong> se conecta 100% gratis a través de <strong>Google Health Connect</strong> o la app de salud de tu teléfono. Las calorías quemadas se transfieren automáticamente a tu diario calórico.
-            </p>
-          </div>
 
           {/* Tarjeta 2: Importador de Archivos de Entrenamiento (.GPX / .FIT / .TCX) */}
           <div style={{ background: '#121826', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '16px', padding: '20px' }}>
@@ -1057,14 +1164,30 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
               <h3 style={{ margin: '0 0 14px 0', fontSize: '1.05rem', color: '#FFF' }}>Historial de Actividades Ingeridas Hoy</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {activities.map(act => (
-                  <div key={act.id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div key={act.id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#FFF' }}>{act.title}</div>
                       <div style={{ fontSize: '0.78rem', color: '#94A3B8' }}>{act.activity_date} • {act.duration_minutes} min • {act.distance_km ? `${act.distance_km} km` : 'Fuerza'}</div>
                     </div>
-                    <div style={{ textAlign: 'right', fontWeight: 800, color: '#10B981', fontSize: '0.95rem' }}>
-                      +{act.calories_burned} kcal
-                      <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>{act.avg_heart_rate ? `❤️ ${act.avg_heart_rate} bpm` : ''}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ textAlign: 'right', fontWeight: 800, color: '#10B981', fontSize: '0.95rem' }}>
+                        +{act.calories_burned} kcal
+                        <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>{act.avg_heart_rate ? `❤️ ${act.avg_heart_rate} bpm` : ''}</div>
+                      </div>
+                      <button
+                        onClick={() => setEditingActivity(act)}
+                        style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid #3B82F6', color: '#60A5FA', padding: '6px 8px', borderRadius: '8px', cursor: 'pointer' }}
+                        title="Editar Actividad"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => removeActivity(act.id)}
+                        style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid #EF4444', color: '#EF4444', padding: '6px 8px', borderRadius: '8px', cursor: 'pointer' }}
+                        title="Borrar Actividad"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1105,50 +1228,112 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
       )}
 
       {/* -----------------------------------------------------------------------
-          MODAL: AÑADIR ALIMENTO PERSONALIZADO
+          MODAL: AÑADIR ALIMENTO PERSONALIZADO (SUPERMARKETAPI INTEGRADA)
       ----------------------------------------------------------------------- */}
       {isAddFoodOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Añadir Alimento al Diario Nutricional</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '500px' }}>
+            <h3 style={{ margin: '0 0 12px 0' }}>Añadir Alimento al Diario Nutricional</h3>
             
+            {/* Aviso informativo de SuperMarketAPI */}
+            <div style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', padding: '12px', borderRadius: '10px', fontSize: '0.8rem', color: '#93C5FD', marginBottom: '14px', lineHeight: '1.4' }}>
+              ℹ️ <strong>Aviso SuperMarketAPI</strong>: Los productos con macronutrientes automáticos provienen de <strong>Mercadona</strong> y <strong>Aldi</strong>. Para los productos de otros supermercados (Carrefour, Dia, Lidl, etc.), introduce sus macros a mano o regístralos en la plataforma.
+            </div>
+
             <form onSubmit={handleAddFoodSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ position: 'relative' }}>
-                <label style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Buscar alimento o ingrediente</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Buscar receta o producto de ingrediente</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegMacroName(newFoodName);
+                      setIsRegisterMacroOpen(true);
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: '#3B82F6', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    + Registrar Macros de Producto
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={newFoodName}
-                  onChange={(e) => {
-                    setNewFoodName(e.target.value);
-                    setShowFoodSuggestions(true);
-                  }}
+                  onChange={(e) => handleFoodNameChange(e.target.value)}
                   onFocus={() => setShowFoodSuggestions(true)}
                   required
-                  placeholder="Escribe ej: Pechuga, Huevos, Avena, Queso fresco, Salmón..."
+                  placeholder="Escribe ej. Tostadas de pan de centeno, Pollo, Huevos, Avena..."
                   style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px 12px', borderRadius: '8px', fontSize: '0.9rem' }}
                 />
 
                 {showFoodSuggestions && newFoodName.trim().length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1E293B', border: '1px solid #10B981', borderRadius: '10px', zIndex: 1100, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', marginTop: '4px' }}>
-                    {fitFoodDatabase
-                      .filter(item => item.name.toLowerCase().includes(newFoodName.toLowerCase()))
-                      .map((item, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => handleSelectFoodItem(item)}
-                          style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                          onMouseDown={(e) => e.preventDefault()}
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1E293B', border: '1px solid #10B981', borderRadius: '10px', zIndex: 1100, maxHeight: '250px', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', marginTop: '4px' }}>
+                    
+                    {/* 1. Recetas coincidentes del catálogo Calla y Come con cálculo por ingredientes */}
+                    {recipes
+                      .filter(r => r.name.toLowerCase().includes(newFoodName.toLowerCase()))
+                      .slice(0, 5)
+                      .map((r) => {
+                        const recipeMacro = calculateRecipeNutritionalMacros(r);
+                        return (
+                          <div
+                            key={`rec-${r.id}`}
+                            onClick={() => handleSelectRecipeItem(r)}
+                            style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(16,185,129,0.12)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#6EE7B7' }}>🍲 Receta: {r.name}</div>
+                              <div style={{ fontSize: '0.74rem', color: '#94A3B8' }}>{r.ingredients.length} ingredientes • {r.meal_type}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#10B981', fontWeight: 700 }}>
+                              {recipeMacro.totalCalories} kcal
+                              <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>🥩 {recipeMacro.totalProtein}g P</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                    {/* 2. Productos coincidentes de SuperMarketAPI */}
+                    {isSearchingSupermarket ? (
+                      <div style={{ padding: '12px', color: '#94A3B8', fontSize: '0.85rem' }}>Buscando ingredientes en SuperMarketAPI...</div>
+                    ) : supermarketSearchResults.length > 0 ? (
+                      supermarketSearchResults.map((item, idx) => {
+                        const macro = getProductMacros(item.nombre, item.supermercado);
+                        return (
+                          <div
+                            key={`prod-${idx}`}
+                            onClick={() => handleSelectSupermarketItem(item)}
+                            style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#FFF' }}>🛒 {item.nombre}</div>
+                              <div style={{ fontSize: '0.74rem', color: '#94A3B8' }}>{item.supermercado.toUpperCase()} • {item.precio ? `${item.precio}€` : 'Súper'}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', fontSize: '0.8rem', color: macro ? '#10B981' : '#F59E0B', fontWeight: 700 }}>
+                              {macro ? `${macro.calories} kcal` : 'A mano ✍️'}
+                              <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>{macro ? `🥩 ${macro.protein_g}g P` : 'Faltan macros'}</div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : null}
+
+                    {recipes.filter(r => r.name.toLowerCase().includes(newFoodName.toLowerCase())).length === 0 && supermarketSearchResults.length === 0 && !isSearchingSupermarket && (
+                      <div style={{ padding: '12px', color: '#94A3B8', fontSize: '0.85rem' }}>
+                        No se encontraron recetas ni productos con ese nombre. Introduce las macros a mano o
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRegMacroName(newFoodName);
+                            setIsRegisterMacroOpen(true);
+                          }}
+                          style={{ background: 'transparent', border: 'none', color: '#3B82F6', textDecoration: 'underline', cursor: 'pointer', marginLeft: '4px' }}
                         >
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#FFF' }}>{item.name}</div>
-                            <div style={{ fontSize: '0.74rem', color: '#94A3B8' }}>Base: {item.unit} • Recomendado: {item.defaultMeal}</div>
-                          </div>
-                          <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#10B981', fontWeight: 700 }}>
-                            {item.calories} kcal
-                            <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>🥩 {item.protein_g}g P</div>
-                          </div>
-                        </div>
-                      ))}
+                          regístralas aquí
+                        </button>.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1206,37 +1391,369 @@ export const FitTab: React.FC<FitTabProps> = ({ recipes, meal_plan, start_date }
       )}
 
       {/* -----------------------------------------------------------------------
+          MODAL: REGISTRAR / SUBIR MACROS DE PRODUCTO A SUPERMARKETAPI
+      ----------------------------------------------------------------------- */}
+      {isRegisterMacroOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#121826', border: '1px solid #3B82F6', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#60A5FA', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Plus size={20} /> Registrar Macros en SuperMarketAPI
+            </h3>
+            <p style={{ color: '#94A3B8', fontSize: '0.85rem', marginBottom: '16px', lineHeight: '1.4' }}>
+              Guarda los valores nutricionales por 100g para cualquier producto de Carrefour, Dia, Lidl, Eroski, etc., para que queden disponibles en las búsquedas de la plataforma.
+            </p>
+
+            <form onSubmit={handleSaveCustomProductMacro} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Nombre del Producto / Marca</label>
+                <input
+                  type="text"
+                  value={regMacroName}
+                  onChange={(e) => setRegMacroName(e.target.value)}
+                  required
+                  placeholder="Ej. Yogur Proteínas Carrefour, Pan Proteico Lidl..."
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Supermercado / Cadena</label>
+                <select
+                  value={regMacroSuper}
+                  onChange={(e) => setRegMacroSuper(e.target.value)}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                >
+                  <option value="Mercadona">Mercadona</option>
+                  <option value="Aldi">Aldi</option>
+                  <option value="Carrefour">Carrefour</option>
+                  <option value="Dia">Dia</option>
+                  <option value="Lidl">Lidl</option>
+                  <option value="Eroski">Eroski</option>
+                  <option value="Otro">Otro Supermercado</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Calorías / 100g (kcal)</label>
+                  <input
+                    type="number"
+                    value={regMacroKcal}
+                    onChange={(e) => setRegMacroKcal(e.target.value)}
+                    required
+                    placeholder="120"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Proteínas / 100g (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={regMacroProtein}
+                    onChange={(e) => setRegMacroProtein(e.target.value)}
+                    placeholder="12.5"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Carbohidratos / 100g (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={regMacroCarbs}
+                    onChange={(e) => setRegMacroCarbs(e.target.value)}
+                    placeholder="4.0"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Grasas / 100g (g)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={regMacroFat}
+                    onChange={(e) => setRegMacroFat(e.target.value)}
+                    placeholder="1.2"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button type="button" onClick={() => setIsRegisterMacroOpen(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#94A3B8', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button type="submit" style={{ background: '#3B82F6', color: '#FFF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
+                  Subir a SuperMarketAPI
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* -----------------------------------------------------------------------
           MODAL: IMPORTAR DE CATALOGO DE RECETAS DE CALLA Y COME
       ----------------------------------------------------------------------- */}
       {isImportRecipeOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
-            <h3 style={{ margin: '0 0 16px 0' }}>Importar Recetas de Calla y Come</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>Importar Recetas de Calla y Come</h3>
+              <button
+                type="button"
+                onClick={() => setIsImportRecipeOpen(false)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#FFF', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                title="Cerrar modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {recipes.map(r => (
-                <div key={r.id} style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{r.name}</div>
-                    <div style={{ color: '#94A3B8', fontSize: '0.8rem' }}>{r.meal_type} • {r.health}</div>
+              {recipes.map(r => {
+                const macroRes = calculateRecipeNutritionalMacros(r);
+                return (
+                  <div key={r.id} style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{r.name}</div>
+                      <div style={{ color: '#10B981', fontSize: '0.82rem', fontWeight: 700, marginTop: '2px' }}>
+                        Calculado: {macroRes.totalCalories} kcal • 🥩 {macroRes.totalProtein}g P • 🍚 {macroRes.totalCarbs}g C • 🥑 {macroRes.totalFat}g G
+                      </div>
+                      {macroRes.missingIngredients.length > 0 && (
+                        <div style={{ color: '#F59E0B', fontSize: '0.75rem', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ fontWeight: 600 }}>⚠️ Faltan macros para {macroRes.missingIngredients.length} ingrediente(s):</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px' }}>
+                            {macroRes.missingIngredients.map((missingIng, idx) => {
+                              const superFormatted = formatSupermarketName(missingIng.supermarket);
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => {
+                                    setRegMacroName(missingIng.product_name || missingIng.ingredient_name);
+                                    setRegMacroSuper(superFormatted);
+                                    setIsRegisterMacroOpen(true);
+                                  }}
+                                  style={{
+                                    background: 'rgba(245,158,11,0.18)',
+                                    border: '1px solid rgba(245,158,11,0.5)',
+                                    color: '#FBBF24',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  ✍️ {missingIng.ingredient_name} ({superFormatted})
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                      <button
+                        onClick={() => {
+                          addFoodLog({
+                            id: Date.now().toString(),
+                            meal_type: 'lunch',
+                            food_name: `${r.name} (Catálogo Calla y Come)`,
+                            callaycome_recipe_id: r.id,
+                            servings: 1,
+                            calories: macroRes.totalCalories || 350,
+                            protein_g: macroRes.totalProtein || 25,
+                            carbs_g: macroRes.totalCarbs || 35,
+                            fat_g: macroRes.totalFat || 10
+                          });
+                          setIsImportRecipeOpen(false);
+                          alert(`¡"${r.name}" añadida a tu diario con sus ${macroRes.totalCalories} kcal reales calculadas!`);
+                        }}
+                        style={{ background: '#10B981', color: '#FFF', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        + Importar ({macroRes.totalCalories} kcal)
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setFoodLogs(prev => [...prev, { id: Date.now().toString(), meal_type: 'lunch', food_name: r.name, servings: 1, calories: 480, protein_g: 35, carbs_g: 50, fat_g: 10 }]);
-                      setIsImportRecipeOpen(false);
-                      alert(`¡${r.name} añadida a tu diario!`);
-                    }}
-                    style={{ background: '#10B981', color: '#FFF', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
-                  >
-                    + Importar
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <button onClick={() => setIsImportRecipeOpen(false)} style={{ marginTop: '16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#FFF', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>Cerrar</button>
           </div>
         </div>
       )}
 
+      {/* -----------------------------------------------------------------------
+          MODAL: EDITAR ACTIVIDAD
+      ----------------------------------------------------------------------- */}
+      {editingActivity && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#121826', border: '1px solid #3B82F6', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#3B82F6', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Edit2 size={20} /> Modificar Actividad / Entrenamiento
+            </h3>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (editingActivity) {
+                updateActivity(editingActivity);
+                setEditingActivity(null);
+                alert('¡Actividad actualizada correctamente!');
+              }
+            }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Título del Entrenamiento</label>
+                <input
+                  type="text"
+                  value={editingActivity.title}
+                  onChange={(e) => setEditingActivity(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  required
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Calorías Quemadas (kcal)</label>
+                  <input
+                    type="number"
+                    value={editingActivity.calories_burned}
+                    onChange={(e) => setEditingActivity(prev => prev ? { ...prev, calories_burned: parseInt(e.target.value) || 0 } : null)}
+                    required
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Duración (min)</label>
+                  <input
+                    type="number"
+                    value={editingActivity.duration_minutes}
+                    onChange={(e) => setEditingActivity(prev => prev ? { ...prev, duration_minutes: parseInt(e.target.value) || 0 } : null)}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Distancia (km)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={editingActivity.distance_km || ''}
+                    onChange={(e) => setEditingActivity(prev => prev ? { ...prev, distance_km: parseFloat(e.target.value) || 0 } : null)}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Pulsaciones (bpm)</label>
+                  <input
+                    type="number"
+                    value={editingActivity.avg_heart_rate || ''}
+                    onChange={(e) => setEditingActivity(prev => prev ? { ...prev, avg_heart_rate: parseInt(e.target.value) || undefined } : null)}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFF', padding: '10px', borderRadius: '8px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button type="button" onClick={() => setEditingActivity(null)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#94A3B8', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button type="submit" style={{ background: '#3B82F6', color: '#FFF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* -----------------------------------------------------------------------
+          MODAL: ELEGIR FECHA DE INICIO DE PLAN
+      ----------------------------------------------------------------------- */}
+      {isDateModalOpen && on_change_start_date && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#121826', border: '1px solid #3B82F6', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '460px' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#60A5FA', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Calendar size={20} /> Elegir Fecha de Inicio del Plan
+            </h3>
+            <p style={{ color: '#94A3B8', fontSize: '0.85rem', marginBottom: '16px', lineHeight: '1.4' }}>
+              Selecciona el día de inicio para calcular el día activo del planificador y sincronizar las comidas diarias.
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  on_change_start_date(todayStr);
+                  setIsDateModalOpen(false);
+                }}
+                style={{ background: '#1E293B', border: '1px solid #3B82F6', color: '#FFF', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
+              >
+                Hoy 📌
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  on_change_start_date(tomorrow.toISOString().split('T')[0]);
+                  setIsDateModalOpen(false);
+                }}
+                style={{ background: '#1E293B', border: '1px solid #3B82F6', color: '#FFF', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
+              >
+                Mañana 🌅
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  const day = now.getDay();
+                  const diff = (day === 0 ? 1 : 8 - day);
+                  const nextMon = new Date(now.setDate(now.getDate() + diff));
+                  on_change_start_date(nextMon.toISOString().split('T')[0]);
+                  setIsDateModalOpen(false);
+                }}
+                style={{ background: '#1E293B', border: '1px solid #3B82F6', color: '#FFF', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
+              >
+                Próximo Lunes 🗓️
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>O elige una fecha en el calendario:</label>
+              <input
+                type="date"
+                value={start_date || ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    on_change_start_date(e.target.value);
+                    setIsDateModalOpen(false);
+                  }
+                }}
+                style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid #3B82F6', color: '#FFF', padding: '10px', borderRadius: '8px', fontSize: '0.95rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setIsDateModalOpen(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#FFF', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
