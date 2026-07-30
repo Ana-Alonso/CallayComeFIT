@@ -2,7 +2,6 @@ import React from 'react';
 import { Save } from 'lucide-react';
 import { Box } from '../common';
 import type { FitUserProfile } from '../../types';
-import { FitFemaleHealthCard } from './FitFemaleHealthCard';
 
 interface FitGoalsSubTabProps {
   userProfile: FitUserProfile;
@@ -236,14 +235,6 @@ export const FitGoalsSubTab: React.FC<FitGoalsSubTabProps> = ({
         </Box>
       </Box>
 
-      {userProfile.gender !== 'male' && (
-        <Box style={{ gridColumn: '1 / -1' }}>
-          <FitFemaleHealthCard
-            userProfile={userProfile}
-            setUserProfile={setUserProfile}
-          />
-        </Box>
-      )}
     </Box>
   );
 };
