@@ -15,6 +15,12 @@ export interface Recipe {
   allergens: string[];
   ingredients: Ingredient[];
   instructions: string[];
+  portions?: number;
+  servings?: number;
+  calories?: number;
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
 }
 
 export interface PantryItem {
@@ -156,5 +162,16 @@ export interface FitActivity {
   distance_km?: number;
   calories_burned: number;
   avg_heart_rate?: number;
+}
+
+export interface FitWeightLogItem {
+  id: string;
+  user_id?: string;
+  log_date: string;
+  weight_kg: number;
+  muscle_mass_kg?: number;
+  fat_percentage?: number;
+  waist_cm?: number;
+  notes?: string;
 }
 

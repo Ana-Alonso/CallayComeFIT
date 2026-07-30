@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { get_supabase_client } from '../services/supabase_client';
-import type { FitUserProfile, FitFoodLogItem, FitActivity } from '../types';
+import type { FitUserProfile, FitFoodLogItem, FitActivity, FitWeightLogItem } from '../types';
 
 export const useFitDatabase = (user: User | null) => {
   const [loading, setLoading] = useState(false);
@@ -43,6 +43,13 @@ export const useFitDatabase = (user: User | null) => {
     const saved = localStorage.getItem('fit_activities');
     return saved ? JSON.parse(saved) : [
       { id: 'act-1', activity_date: 'Hoy, 10:30 AM', source: 'health_connect', activity_type: 'workout', title: 'Carrera con Reloj / Pulsera de Actividad', duration_minutes: 32, distance_km: 6.4, calories_burned: 380, avg_heart_rate: 152 }
+    ];
+  });
+
+  const [weightLogs, setWeightLogs] = useState<FitWeightLogItem[]>(() => {
+    const saved = localStorage.getItem('fit_weight_logs');
+    return saved ? JSON.parse(saved) : [
+      { id: 'w-1', log_date: new Date().toISOString().split('T')[0], weight_kg: 68.0, muscle_mass_kg: 28.5, fat_percentage: 22.0, waist_cm: 76, notes: 'Registro inicial Fit' }
     ];
   });
 
@@ -305,6 +312,46 @@ export const useFitDatabase = (user: User | null) => {
     }
   }, [user]);
 
+  // 8. Añadir registro de pesaje/composición
+  const addWeightLog = useCallback(async (log: FitWeightLogItem) => {
+    setWeightLogs(prev => {
+      const updated = [log, ...prev];
+      localStorage.setItem('fit_weight_logs', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (user) {
+      const client = get_supabase_client();
+      if (client) {
+        await client.from('fit_weight_logs').insert({
+          user_id: user.id,
+          log_date: log.log_date,
+          weight_kg: log.weight_kg,
+          muscle_mass_kg: log.muscle_mass_kg || null,
+          fat_percentage: log.fat_percentage || null,
+          waist_cm: log.waist_cm || null,
+          notes: log.notes || null
+        });
+      }
+    }
+  }, [user]);
+
+  // 9. Eliminar registro de pesaje
+  const removeWeightLog = useCallback(async (id: string) => {
+    setWeightLogs(prev => {
+      const updated = prev.filter(w => w.id !== id);
+      localStorage.setItem('fit_weight_logs', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (user) {
+      const client = get_supabase_client();
+      if (client) {
+        await client.from('fit_weight_logs').delete().eq('id', id).eq('user_id', user.id);
+      }
+    }
+  }, [user]);
+
   return {
     loading,
     userProfile,
@@ -317,6 +364,9 @@ export const useFitDatabase = (user: User | null) => {
     setActivities,
     addActivity,
     removeActivity,
-    updateActivity
+    updateActivity,
+    weightLogs,
+    addWeightLog,
+    removeWeightLog
   };
 };

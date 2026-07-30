@@ -63,9 +63,10 @@ describe('FitTab Component', () => {
     expect(screen.getAllByText(/Objetivos/i)[0]).toBeDefined();
     expect(screen.getAllByText(/Actividad/i)[0]).toBeDefined();
     expect(screen.getAllByText(/Recetas/i)[0]).toBeDefined();
+    expect(screen.getByText(/Progresión/i)).toBeDefined();
   });
 
-  it('allows switching between sub-tabs', () => {
+  it('allows switching between sub-tabs including Progresión', () => {
     render(
       <FitTab
         user={mockUser}
@@ -84,5 +85,11 @@ describe('FitTab Component', () => {
     fireEvent.click(goalsTabBtn);
 
     expect(screen.getByText(/Calculadora Metabólica/i)).toBeDefined();
+
+    const progressTabBtn = screen.getByText(/Progresión/i);
+    fireEvent.click(progressTabBtn);
+
+    expect(screen.getByText(/Evolución Corporal y Rendimiento/i)).toBeDefined();
+    expect(screen.getByText(/\+ Registrar Pesaje \/ Composición/i)).toBeDefined();
   });
 });

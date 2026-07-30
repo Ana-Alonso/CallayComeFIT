@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useFitDatabase } from '../useFitDatabase';
-import type { FitFoodLogItem, FitActivity } from '../../types';
+import type { FitFoodLogItem, FitActivity, FitWeightLogItem } from '../../types';
 
 describe('useFitDatabase Hook', () => {
   beforeEach(() => {
@@ -16,6 +16,7 @@ describe('useFitDatabase Hook', () => {
     expect(result.current.userProfile.daily_calorie_target).toBeGreaterThan(0);
     expect(result.current.foodLogs.length).toBeGreaterThan(0);
     expect(result.current.activities.length).toBeGreaterThan(0);
+    expect(result.current.weightLogs.length).toBeGreaterThan(0);
   });
 
   it('should allow adding a new food log item', async () => {
@@ -79,5 +80,32 @@ describe('useFitDatabase Hook', () => {
     const found = result.current.activities.find(a => a.id === 'act-test-1');
     expect(found?.duration_minutes).toBe(60);
     expect(found?.calories_burned).toBe(400);
+  });
+
+  it('should allow adding and removing weight progression logs', async () => {
+    const { result } = renderHook(() => useFitDatabase(null));
+
+    const newLog: FitWeightLogItem = {
+      id: 'weight-test-1',
+      log_date: '2026-07-30',
+      weight_kg: 66.5,
+      muscle_mass_kg: 29.2,
+      fat_percentage: 20.5,
+      waist_cm: 74.5,
+      notes: 'Test pesaje'
+    };
+
+    await act(async () => {
+      await result.current.addWeightLog(newLog);
+    });
+
+    expect(result.current.weightLogs).toContainEqual(newLog);
+
+    await act(async () => {
+      await result.current.removeWeightLog('weight-test-1');
+    });
+
+    const exists = result.current.weightLogs.some(w => w.id === 'weight-test-1');
+    expect(exists).toBe(false);
   });
 });

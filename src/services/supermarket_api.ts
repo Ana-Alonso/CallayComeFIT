@@ -364,6 +364,28 @@ export function calculateRecipeNutritionalMacros(
   return result;
 }
 
+export function getRecipeSuperMarketMacros(recipe: any) {
+  const breakdown = calculateRecipeNutritionalMacros(recipe);
+  const portions = recipe.portions || recipe.servings || 1;
+
+  const caloriesPerServing = Math.round(breakdown.totalCalories / portions);
+  const proteinPerServing = Number((breakdown.totalProtein / portions).toFixed(1));
+  const carbsPerServing = Number((breakdown.totalCarbs / portions).toFixed(1));
+  const fatPerServing = Number((breakdown.totalFat / portions).toFixed(1));
+
+  return {
+    portions,
+    totalCalories: breakdown.totalCalories,
+    totalProtein: breakdown.totalProtein,
+    totalCarbs: breakdown.totalCarbs,
+    totalFat: breakdown.totalFat,
+    caloriesPerServing,
+    proteinPerServing,
+    carbsPerServing,
+    fatPerServing
+  };
+}
+
 export function formatSupermarketName(superName: string = ''): string {
   if (!superName) return 'Mercadona';
   const clean = superName.toLowerCase().trim();
