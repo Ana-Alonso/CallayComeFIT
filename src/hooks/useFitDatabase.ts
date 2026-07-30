@@ -171,7 +171,7 @@ export const useFitDatabase = (user: User | null) => {
             const loadedActs: FitActivity[] = actData.map(item => ({
               id: item.id,
               user_id: item.user_id,
-              activity_date: new Date(item.activity_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              activity_date: item.activity_date ? new Date(item.activity_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               source: item.source || 'manual',
               activity_type: item.activity_type || 'workout',
               title: item.title,
@@ -293,6 +293,7 @@ export const useFitDatabase = (user: User | null) => {
       if (client) {
         const { error } = await client.from('fit_activities').insert({
           user_id: user.id,
+          activity_date: act.activity_date || new Date().toISOString(),
           source: act.source,
           activity_type: act.activity_type || 'workout',
           title: act.title,

@@ -39,7 +39,12 @@ export const FitProgressSubTab: React.FC<FitProgressSubTabProps> = ({
   const targetWeight = userProfile.target_weight_kg || 65;
   const weightDiff = Math.abs(Number((targetWeight - latestWeight).toFixed(1)));
 
-  const monthlyActivities = activities.filter(a => a.activity_date && a.activity_date.startsWith(selectedMonth));
+  const monthlyActivities = activities.filter(a => {
+    if (!a.activity_date || a.activity_date === 'Hoy') {
+      return selectedMonth === new Date().toISOString().slice(0, 7);
+    }
+    return a.activity_date.startsWith(selectedMonth);
+  });
   const totalKcalBurned = monthlyActivities.reduce((sum, a) => sum + (a.calories_burned || 0), 0);
 
   return (

@@ -17,6 +17,7 @@ export const FitEditActivityModal: React.FC<FitEditActivityModalProps> = ({
   onAddActivity,
   onUpdateActivity
 }) => {
+  const [activityDate, setActivityDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState('');
   const [calories, setCalories] = useState('');
@@ -25,12 +26,14 @@ export const FitEditActivityModal: React.FC<FitEditActivityModalProps> = ({
 
   useEffect(() => {
     if (activityToEdit) {
+      setActivityDate(activityToEdit.activity_date ? activityToEdit.activity_date.split('T')[0] : new Date().toISOString().split('T')[0]);
       setTitle(activityToEdit.title);
       setDuration(activityToEdit.duration_minutes.toString());
       setCalories(activityToEdit.calories_burned.toString());
       setDistance(activityToEdit.distance_km ? activityToEdit.distance_km.toString() : '');
       setHeartRate(activityToEdit.avg_heart_rate ? activityToEdit.avg_heart_rate.toString() : '');
     } else {
+      setActivityDate(new Date().toISOString().split('T')[0]);
       setTitle('');
       setDuration('');
       setCalories('');
@@ -45,9 +48,12 @@ export const FitEditActivityModal: React.FC<FitEditActivityModalProps> = ({
     e.preventDefault();
     if (!title || !duration || !calories) return;
 
+    const formattedDate = activityDate || new Date().toISOString().split('T')[0];
+
     if (activityToEdit) {
       onUpdateActivity({
         ...activityToEdit,
+        activity_date: formattedDate,
         title,
         duration_minutes: parseInt(duration) || 0,
         calories_burned: parseInt(calories) || 0,
@@ -57,7 +63,7 @@ export const FitEditActivityModal: React.FC<FitEditActivityModalProps> = ({
     } else {
       onAddActivity({
         id: Date.now().toString(),
-        activity_date: 'Hoy',
+        activity_date: formattedDate,
         source: 'manual',
         activity_type: 'workout',
         title,
@@ -79,6 +85,16 @@ export const FitEditActivityModal: React.FC<FitEditActivityModalProps> = ({
         </h3>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <Box style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', padding: '10px 12px', borderRadius: '10px' }}>
+            <label style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: 700, display: 'block', marginBottom: '4px' }}>📅 Fecha de la Actividad</label>
+            <input
+              type="date"
+              required
+              value={activityDate}
+              onChange={(e) => setActivityDate(e.target.value)}
+              style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(16,185,129,0.3)', color: '#FFF', padding: '8px 10px', borderRadius: '8px', fontSize: '0.88rem' }}
+            />
+          </Box>
           <Box>
             <label style={{ fontSize: '0.8rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Título / Nombre de la Actividad *</label>
             <input
