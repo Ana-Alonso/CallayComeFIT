@@ -2,6 +2,7 @@ import React from 'react';
 import { Droplet, Moon, Edit2, Trash2, TrendingUp } from 'lucide-react';
 import { Box } from '../common';
 import type { FitUserProfile, FitFoodLogItem, FitActivity } from '../../types';
+import { FitFemaleHealthCard } from './FitFemaleHealthCard';
 
 interface FitDashboardSubTabProps {
   userProfile: FitUserProfile;
@@ -159,40 +160,56 @@ export const FitDashboardSubTab: React.FC<FitDashboardSubTabProps> = ({
           <Box style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Moon size={20} style={{ color: '#8B5CF6' }} />
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Sueño y Descanso</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Sueño Nocturno y Siesta</h3>
             </Box>
-          </Box>
-
-          <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#C4B5FD' }}>
-              {userProfile.sleep_logged_hours || 7.5} h
-            </span>
             <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Meta: 8.0 h</span>
           </Box>
 
-          <Box style={{ display: 'flex', gap: '6px' }}>
-            {[6.5, 7.0, 7.5, 8.0].map(h => (
-              <button
-                key={h}
-                onClick={() => setUserProfile(prev => ({ ...prev, sleep_logged_hours: h }))}
-                style={{
-                  flex: 1,
-                  background: userProfile.sleep_logged_hours === h ? '#8B5CF6' : 'rgba(139,92,246,0.12)',
-                  border: '1px solid rgba(139,92,246,0.25)',
-                  color: userProfile.sleep_logged_hours === h ? '#FFF' : '#C4B5FD',
-                  padding: '6px',
-                  borderRadius: '8px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                {h} h
-              </button>
-            ))}
+          <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <Box>
+              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#C4B5FD', display: 'block' }}>
+                {((userProfile.sleep_logged_hours || 0) + (userProfile.nap_logged_hours || 0)).toFixed(1)} h
+              </span>
+              <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Descanso Total Logrado</span>
+            </Box>
+          </Box>
+
+          <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <Box>
+              <label style={{ fontSize: '0.72rem', color: '#C4B5FD', display: 'block', marginBottom: '4px' }}>Sueño Nocturno (h)</label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                placeholder="Ej. 8.0"
+                value={userProfile.sleep_logged_hours ?? ''}
+                onChange={(e) => setUserProfile(prev => ({ ...prev, sleep_logged_hours: parseFloat(e.target.value) || 0 }))}
+                style={{ width: '100%', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', color: '#FFF', padding: '6px 8px', borderRadius: '8px', fontSize: '0.85rem' }}
+              />
+            </Box>
+
+            <Box>
+              <label style={{ fontSize: '0.72rem', color: '#FCD34D', display: 'block', marginBottom: '4px' }}>Siesta (h)</label>
+              <input
+                type="number"
+                step="0.25"
+                min="0"
+                max="12"
+                placeholder="Ej. 0.5"
+                value={userProfile.nap_logged_hours ?? ''}
+                onChange={(e) => setUserProfile(prev => ({ ...prev, nap_logged_hours: parseFloat(e.target.value) || 0 }))}
+                style={{ width: '100%', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#FFF', padding: '6px 8px', borderRadius: '8px', fontSize: '0.85rem' }}
+              />
+            </Box>
           </Box>
         </Box>
       </Box>
+
+      <FitFemaleHealthCard
+        userProfile={userProfile}
+        setUserProfile={setUserProfile}
+      />
 
       <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px' }}>
         <Box style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

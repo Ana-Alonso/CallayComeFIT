@@ -8,6 +8,11 @@ interface UseRecipesParams {
   get_recipe_votes?: (recipeId: number) => number;
 }
 
+let globalDbRecipesAvailable: boolean | null = null;
+let globalDbIngredientsAvailable: boolean | null = null;
+let loadRecipesPromise: Promise<Recipe[] | null> | null = null;
+let loadIngredientsPromise: Promise<string[] | null> | null = null;
+
 export const useRecipes = ({
   trigger_push,
   get_recipe_votes
@@ -45,15 +50,35 @@ export const useRecipes = ({
   };
 
   const load_db_ingredients = async (): Promise<void> => {
-    const supabase = get_supabase_client();
-    if (!supabase) return;
-    try {
-      const { data, error } = await supabase.from('ingredients').select('name').order('name');
-      if (!error && data) {
-        set_db_ingredients(data.map((i: any) => i.name));
-      }
-    } catch (e) {
-      console.error('Error loading db ingredients:', e);
+    if (globalDbIngredientsAvailable === false) return;
+
+    if (!loadIngredientsPromise) {
+      loadIngredientsPromise = (async () => {
+        const supabase = get_supabase_client();
+        if (!supabase) {
+          globalDbIngredientsAvailable = false;
+          return null;
+        }
+        try {
+          const { data, error } = await supabase.from('ingredients').select('name').order('name');
+          if (!error && data) {
+            globalDbIngredientsAvailable = true;
+            return data.map((i: any) => i.name);
+          } else {
+            globalDbIngredientsAvailable = false;
+            return null;
+          }
+        } catch (e) {
+          globalDbIngredientsAvailable = false;
+          console.warn('DB ingredients table not available:', e);
+          return null;
+        }
+      })();
+    }
+
+    const fetchedIngredients = await loadIngredientsPromise;
+    if (fetchedIngredients) {
+      set_db_ingredients(fetchedIngredients);
     }
   };
 
@@ -126,34 +151,59 @@ export const useRecipes = ({
   };
 
   const load_recipes = async (): Promise<void> => {
-    const supabase = get_supabase_client();
-    if (!supabase) {
+    if (globalDbRecipesAvailable === false) {
       set_recipes(local_recipes as Recipe[]);
       return;
     }
-    try {
-      const { data: db_recipes, error } = await supabase
-        .from('recipes')
-        .select('*, recipe_ingredients(*, ingredients(*))');
 
-      if (!error && db_recipes) {
-        if (db_recipes.length === 0) {
-          for (const r of local_recipes) {
-            await insert_recipe_relational(r as any, supabase);
-          }
-          const { data: refreshed } = await supabase
+    if (!loadRecipesPromise) {
+      loadRecipesPromise = (async () => {
+        const supabase = get_supabase_client();
+        if (!supabase) {
+          globalDbRecipesAvailable = false;
+          return null;
+        }
+        try {
+          const { data: db_recipes, error } = await supabase
             .from('recipes')
             .select('*, recipe_ingredients(*, ingredients(*))');
-          if (refreshed) {
-            set_recipes(refreshed.map((row: any) => map_db_recipe(row)));
+
+          if (!error && db_recipes) {
+            globalDbRecipesAvailable = true;
+            if (db_recipes.length === 0) {
+              try {
+                for (const r of local_recipes) {
+                  await insert_recipe_relational(r as any, supabase);
+                }
+                const { data: refreshed } = await supabase
+                  .from('recipes')
+                  .select('*, recipe_ingredients(*, ingredients(*))');
+                return refreshed ? refreshed.map((row: any) => map_db_recipe(row)) : null;
+              } catch (insertErr) {
+                console.warn('Could not populate DB recipes, using local recipes:', insertErr);
+                return null;
+              }
+            } else {
+              return db_recipes.map((row: any) => map_db_recipe(row));
+            }
+          } else {
+            globalDbRecipesAvailable = false;
+            return null;
           }
-        } else {
-          set_recipes(db_recipes.map((row: any) => map_db_recipe(row)));
+        } catch (e) {
+          console.warn('Using local recipes catalog:', e);
+          globalDbRecipesAvailable = false;
+          return null;
         }
-      }
+      })();
+    }
+
+    const fetchedRecipes = await loadRecipesPromise;
+    if (fetchedRecipes && Array.isArray(fetchedRecipes) && fetchedRecipes.length > 0) {
+      set_recipes(fetchedRecipes);
       await load_db_ingredients();
-    } catch (e) {
-      console.error(e);
+    } else {
+      set_recipes(local_recipes as Recipe[]);
     }
   };
 

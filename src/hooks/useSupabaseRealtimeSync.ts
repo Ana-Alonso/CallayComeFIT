@@ -46,7 +46,9 @@ export const useSupabaseRealtimeSync = ({
           .is('read_at', null);
 
         if (error) {
-          console.error('[sync] Error fetching unread notifications:', error);
+          if (error.code !== 'PGRST205') {
+            console.error('[sync] Error fetching unread notifications:', error);
+          }
           return;
         }
 

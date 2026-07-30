@@ -19,23 +19,29 @@ describe('Supermarket API Services', () => {
       expect(formatSupermarketName('dia')).toBe('Dia');
       expect(formatSupermarketName('lidl')).toBe('Lidl');
       expect(formatSupermarketName('eroski')).toBe('Eroski');
-      expect(formatSupermarketName('')).toBe('Mercadona');
+      expect(formatSupermarketName('')).toBe('Supermercado General');
     });
   });
 
   describe('getProductMacros', () => {
-    it('should return accurate nutritional macros for known foods', () => {
+    it('should return accurate nutritional macros for registered products in DB', async () => {
+      await saveSupermarketProductMacros({
+        nombre: 'Pechuga de pollo fresca',
+        supermercado: 'Mercadona',
+        calories: 165,
+        protein_g: 31.0,
+        carbs_g: 0.0,
+        fat_g: 3.6,
+        unit: '100g'
+      });
+
       const pollo = getProductMacros('Pechuga de pollo fresca', 'Mercadona');
       expect(pollo).not.toBeNull();
       expect(pollo?.calories).toBe(165);
       expect(pollo?.protein_g).toBe(31.0);
-
-      const huevo = getProductMacros('Huevos frescos camperos', 'Aldi');
-      expect(huevo).not.toBeNull();
-      expect(huevo?.protein_g).toBe(13.0);
     });
 
-    it('should return null for unknown foods without default fallbacks', () => {
+    it('should return null for unknown foods without DB record', () => {
       const unknownFood = getProductMacros('Producto Desconocido XYZ99', 'Carrefour');
       expect(unknownFood).toBeNull();
     });
@@ -64,7 +70,10 @@ describe('Supermarket API Services', () => {
   });
 
   describe('calculateRecipeNutritionalMacros', () => {
-    it('should calculate total calories and macros for a recipe', () => {
+    it('should calculate total calories and macros for a recipe with DB products', async () => {
+      await saveSupermarketProductMacros({ nombre: 'Arroz', supermercado: 'Mercadona', calories: 130, protein_g: 2.7, carbs_g: 28.0, fat_g: 0.3, unit: '100g' });
+      await saveSupermarketProductMacros({ nombre: 'Pechuga de pollo', supermercado: 'Mercadona', calories: 165, protein_g: 31.0, carbs_g: 0.0, fat_g: 3.6, unit: '100g' });
+
       const sampleRecipe = {
         id: 1,
         name: 'Arroz con Pechuga de Pollo y Pimiento',

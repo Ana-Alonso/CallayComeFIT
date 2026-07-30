@@ -7,15 +7,14 @@ interface UseAuthParams {
   set_my_families: (families: FamilyMember[]) => void;
   trigger_push: (title: string, message: string) => void;
   load_family_data: (familyId: string | null, startDateVal?: string | null, userId?: string) => Promise<void>;
-  load_local_data: () => void;
+  load_local_data?: () => void;
 }
 
 export const useAuth = ({
   set_profile,
   set_my_families,
   trigger_push,
-  load_family_data,
-  load_local_data
+  load_family_data
 }: UseAuthParams) => {
 
   const load_user_families = async (userId: string): Promise<any[]> => {
@@ -73,34 +72,60 @@ export const useAuth = ({
         .eq('id', userId)
         .single();
 
-      if (profError) {
-        console.error("profile error:", profError);
-        trigger_push("Error de Perfil DB", profError.message);
-        load_local_data();
+      if (!prof && (!profError || profError.code === 'PGRST116')) {
+        // El usuario está autenticado pero aún no tiene fila en public.profiles: Crearla automáticamente
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: newProf, error: createErr } = await supabase
+            .from('profiles')
+            .upsert({
+              id: userId,
+              email: user.email || '',
+              display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'Usuario',
+              active_family_id: null
+            })
+            .select('*')
+            .single();
+
+          if (newProf && !createErr) {
+            set_profile(newProf as Profile);
+            await load_family_data(null, null, userId);
+            return;
+          }
+        }
+      }
+
+      if (profError || !prof) {
+        console.error("Error al obtener perfil desde Supabase:", profError?.message);
+        trigger_push(
+          "Error de inicio de sesión ⚠️",
+          "No se puede iniciar sesión de momento por errores en la base de datos."
+        );
+        set_profile(null);
+        await supabase.auth.signOut().catch(() => {});
         return;
       }
 
-      if (prof) {
-        set_profile(prof as Profile);
-        const families = await load_user_families(userId);
-        
-        let active_id = prof.active_family_id;
+      set_profile(prof as Profile);
+      const families = await load_user_families(userId);
+      
+      let active_id = prof.active_family_id;
 
-        if (active_id) {
-          const active_membership = families.find((f: any) => f.family_id === active_id);
-          const start_date_val = active_membership?.start_date || null;
-          await load_family_data(active_id, start_date_val, userId);
-        } else {
-          await load_family_data(null, null, userId);
-        }
+      if (active_id) {
+        const active_membership = families.find((f: any) => f.family_id === active_id);
+        const start_date_val = active_membership?.start_date || null;
+        await load_family_data(active_id, start_date_val, userId);
       } else {
-        trigger_push("Perfil no encontrado", "No se encontró tu perfil en la base de datos.");
-        load_local_data();
+        await load_family_data(null, null, userId);
       }
     } catch (err: any) {
-      console.error(err);
-      trigger_push("Error de Perfil Catch", err.message || String(err));
-      load_local_data();
+      console.error("Error de Perfil Catch:", err);
+      trigger_push(
+        "Error de inicio de sesión ⚠️",
+        "No se puede iniciar sesión de momento por errores en la base de datos."
+      );
+      set_profile(null);
+      await supabase.auth.signOut().catch(() => {});
     }
   };
 
@@ -112,11 +137,6 @@ export const useAuth = ({
       trigger_push("Error de Acceso", error.message);
       return false;
     }
-    
-    // Log in to supermarketSupabase in parallel
-    await supermarketSupabase.auth.signInWithPassword({ email, password: pass }).catch(e => {
-      console.warn("Failed to log in to Supermarket database in parallel:", e);
-    });
 
     trigger_push("¡Bienvenido/a!", "Sesión iniciada con éxito.");
     return true;
@@ -130,11 +150,6 @@ export const useAuth = ({
       trigger_push("Error de Registro", error.message);
       return false;
     }
-
-    // Sign up to supermarketSupabase in parallel
-    await supermarketSupabase.auth.signUp({ email, password: pass }).catch(e => {
-      console.warn("Failed to sign up to Supermarket database in parallel:", e);
-    });
 
     if (data.session === null && data.user) {
       trigger_push(

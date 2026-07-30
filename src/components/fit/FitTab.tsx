@@ -26,6 +26,7 @@ import { FitRegisterMacroModal } from "./FitRegisterMacroModal";
 import { FitAddWeightModal } from "./FitAddWeightModal";
 import { FitEditActivityModal } from "./FitEditActivityModal";
 import { FitDateModal } from "./FitDateModal";
+import { FitRecipeIngredientsMacroModal } from "./FitRecipeIngredientsMacroModal";
 
 interface FitTabProps {
   user?: User | null;
@@ -81,6 +82,7 @@ export const FitTab: React.FC<FitTabProps> = ({
 
   const [isRegisterMacroOpen, setIsRegisterMacroOpen] = useState(false);
   const [registerMacroName, setRegisterMacroName] = useState("");
+  const [isRecipeIngredientsMacroOpen, setIsRecipeIngredientsMacroOpen] = useState(false);
 
   const [isAddWeightOpen, setIsAddWeightOpen] = useState(false);
   const [isEditActivityOpen, setIsEditActivityOpen] = useState(false);
@@ -217,10 +219,13 @@ export const FitTab: React.FC<FitTabProps> = ({
       {subTab === "diary" && (
         <FitDiarySubTab
           foodLogs={foodLogs}
+          profile={profile}
           currentDayPlan={currentDayPlan}
           currentDayNum={currentDayNum}
           onImportMealPlan={handleImportMealPlan}
           onOpenAddFoodModal={handleOpenAddFoodModal}
+          onOpenRegisterMacroModal={handleOpenRegisterMacroModal}
+          onOpenRecipeIngredientsMacroModal={() => setIsRecipeIngredientsMacroOpen(true)}
           onDeleteFood={handleDeleteFood}
         />
       )}
@@ -275,9 +280,16 @@ export const FitTab: React.FC<FitTabProps> = ({
         initialProductName={registerMacroName}
       />
 
+      <FitRecipeIngredientsMacroModal
+        isOpen={isRecipeIngredientsMacroOpen}
+        onClose={() => setIsRecipeIngredientsMacroOpen(false)}
+        recipes={recipes}
+      />
+
       <FitAddWeightModal
         isOpen={isAddWeightOpen}
         onClose={() => setIsAddWeightOpen(false)}
+        userProfile={userProfile}
         onAddWeightLog={addWeightLog}
       />
 

@@ -53,6 +53,21 @@ export const useFitDatabase = (user: User | null) => {
     ];
   });
 
+  // Reset automático de 24h a medianoche para diario y actividades
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastReset = localStorage.getItem('fit_last_reset_date');
+
+    if (lastReset && lastReset !== todayStr) {
+      setFoodLogs([]);
+      setActivities([]);
+      localStorage.setItem('fit_food_logs', JSON.stringify([]));
+      localStorage.setItem('fit_activities', JSON.stringify([]));
+    }
+
+    localStorage.setItem('fit_last_reset_date', todayStr);
+  }, []);
+
   // 1. Cargar datos de Supabase si el usuario ha iniciado sesión
   useEffect(() => {
     if (!user) return;
@@ -92,75 +107,87 @@ export const useFitDatabase = (user: User | null) => {
           setUserProfile(loadedProfile);
           localStorage.setItem('fit_user_profile', JSON.stringify(loadedProfile));
         } else if (profileErr && profileErr.code === 'PGRST116') {
-          // No existe perfil aún en Supabase: Guardar el perfil inicial
-          await client.from('fit_user_profiles').upsert({
-            user_id: user.id,
-            age: userProfile.age,
-            gender: userProfile.gender,
-            height_cm: userProfile.height_cm,
-            current_weight_kg: userProfile.current_weight_kg,
-            target_weight_kg: userProfile.target_weight_kg,
-            activity_level: userProfile.activity_level,
-            fitness_goal: userProfile.fitness_goal,
-            bmr: userProfile.bmr,
-            tdee: userProfile.tdee,
-            daily_calorie_target: userProfile.daily_calorie_target,
-            macro_preset: userProfile.macro_preset,
-            custom_protein_pct: userProfile.custom_protein_pct,
-            custom_carb_pct: userProfile.custom_carb_pct,
-            custom_fat_pct: userProfile.custom_fat_pct,
-            daily_water_target_ml: userProfile.daily_water_target_ml
-          });
+          // No existe perfil aún en Supabase: Intentar guardar el perfil inicial
+          try {
+            await client.from('fit_user_profiles').upsert({
+              user_id: user.id,
+              age: userProfile.age,
+              gender: userProfile.gender,
+              height_cm: userProfile.height_cm,
+              current_weight_kg: userProfile.current_weight_kg,
+              target_weight_kg: userProfile.target_weight_kg,
+              activity_level: userProfile.activity_level,
+              fitness_goal: userProfile.fitness_goal,
+              bmr: userProfile.bmr,
+              tdee: userProfile.tdee,
+              daily_calorie_target: userProfile.daily_calorie_target,
+              macro_preset: userProfile.macro_preset,
+              custom_protein_pct: userProfile.custom_protein_pct,
+              custom_carb_pct: userProfile.custom_carb_pct,
+              custom_fat_pct: userProfile.custom_fat_pct,
+              daily_water_target_ml: userProfile.daily_water_target_ml
+            });
+          } catch (e) {
+            console.warn('Supabase fit_user_profiles no disponible, usando modo local:', e);
+          }
         }
 
         // Cargar registros de alimentos del día
         const todayStr = new Date().toISOString().split('T')[0];
-        const { data: logsData } = await client
-          .from('fit_daily_food_logs')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('log_date', todayStr);
+        try {
+          const { data: logsData } = await client
+            .from('fit_daily_food_logs')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('log_date', todayStr);
 
-        if (logsData && logsData.length > 0) {
-          const loadedLogs: FitFoodLogItem[] = logsData.map(item => ({
-            id: item.id,
-            user_id: item.user_id,
-            meal_type: item.meal_type,
-            food_name: item.food_name,
-            servings: Number(item.servings),
-            calories: item.calories,
-            protein_g: Number(item.protein_g),
-            carbs_g: Number(item.carbs_g),
-            fat_g: Number(item.fat_g)
-          }));
-          setFoodLogs(loadedLogs);
-          localStorage.setItem('fit_food_logs', JSON.stringify(loadedLogs));
+          if (logsData && logsData.length > 0) {
+            const loadedLogs: FitFoodLogItem[] = logsData.map(item => ({
+              id: item.id,
+              user_id: item.user_id,
+              meal_type: item.meal_type,
+              food_name: item.food_name,
+              servings: Number(item.servings),
+              calories: item.calories,
+              protein_g: Number(item.protein_g),
+              carbs_g: Number(item.carbs_g),
+              fat_g: Number(item.fat_g)
+            }));
+            setFoodLogs(loadedLogs);
+            localStorage.setItem('fit_food_logs', JSON.stringify(loadedLogs));
+          }
+        } catch (e) {
+          console.warn('Supabase fit_daily_food_logs no disponible, usando modo local:', e);
         }
 
         // Cargar actividades de hoy
-        const { data: actData } = await client
-          .from('fit_activities')
-          .select('*')
-          .eq('user_id', user.id);
+        try {
+          const { data: actData } = await client
+            .from('fit_activities')
+            .select('*')
+            .eq('user_id', user.id);
 
-        if (actData && actData.length > 0) {
-          const loadedActs: FitActivity[] = actData.map(item => ({
-            id: item.id,
-            user_id: item.user_id,
-            activity_date: new Date(item.activity_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            source: item.source || 'manual',
-            activity_type: item.activity_type || 'workout',
-            title: item.title,
-            duration_minutes: item.duration_minutes,
-            distance_km: item.distance_km ? Number(item.distance_km) : undefined,
-            calories_burned: item.calories_burned,
-            avg_heart_rate: item.avg_heart_rate || undefined
-          }));
-          setActivities(loadedActs);
-          localStorage.setItem('fit_activities', JSON.stringify(loadedActs));
+          if (actData && actData.length > 0) {
+            const loadedActs: FitActivity[] = actData.map(item => ({
+              id: item.id,
+              user_id: item.user_id,
+              activity_date: new Date(item.activity_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              source: item.source || 'manual',
+              activity_type: item.activity_type || 'workout',
+              title: item.title,
+              duration_minutes: item.duration_minutes,
+              distance_km: item.distance_km ? Number(item.distance_km) : undefined,
+              calories_burned: item.calories_burned,
+              avg_heart_rate: item.avg_heart_rate || undefined
+            }));
+            setActivities(loadedActs);
+            localStorage.setItem('fit_activities', JSON.stringify(loadedActs));
+          }
+        } catch (e) {
+          console.warn('Supabase fit_activities no disponible, usando modo local:', e);
         }
       } catch (err) {
-        console.error('Error cargando datos Fit desde Supabase:', err);
+        console.warn('Modo local activo para diario Fit:', err);
       } finally {
         setLoading(false);
       }
@@ -178,27 +205,32 @@ export const useFitDatabase = (user: User | null) => {
       if (user) {
         const client = get_supabase_client();
         if (client) {
-          client.from('fit_user_profiles').upsert({
-            user_id: user.id,
-            age: updated.age,
-            gender: updated.gender,
-            height_cm: updated.height_cm,
-            current_weight_kg: updated.current_weight_kg,
-            target_weight_kg: updated.target_weight_kg,
-            activity_level: updated.activity_level,
-            fitness_goal: updated.fitness_goal,
-            bmr: updated.bmr,
-            tdee: updated.tdee,
-            daily_calorie_target: updated.daily_calorie_target,
-            macro_preset: updated.macro_preset,
-            custom_protein_pct: updated.custom_protein_pct,
-            custom_carb_pct: updated.custom_carb_pct,
-            custom_fat_pct: updated.custom_fat_pct,
-            daily_water_target_ml: updated.daily_water_target_ml,
-            updated_at: new Date().toISOString()
-          }).then(({ error }) => {
-            if (error) console.error('Error guardando perfil Fit en Supabase:', error.message);
-          });
+          (async () => {
+            try {
+              const { error } = await client.from('fit_user_profiles').upsert({
+                user_id: user.id,
+                age: updated.age,
+                gender: updated.gender,
+                height_cm: updated.height_cm,
+                current_weight_kg: updated.current_weight_kg,
+                target_weight_kg: updated.target_weight_kg,
+                activity_level: updated.activity_level,
+                fitness_goal: updated.fitness_goal,
+                bmr: updated.bmr,
+                tdee: updated.tdee,
+                daily_calorie_target: updated.daily_calorie_target,
+                macro_preset: updated.macro_preset,
+                custom_protein_pct: updated.custom_protein_pct,
+                custom_carb_pct: updated.custom_carb_pct,
+                custom_fat_pct: updated.custom_fat_pct,
+                daily_water_target_ml: updated.daily_water_target_ml,
+                updated_at: new Date().toISOString()
+              });
+              if (error) console.warn('Perfil guardado en localStorage (Supabase DB no lista):', error.message);
+            } catch (e) {
+              console.warn('Perfil guardado en localStorage:', e);
+            }
+          })();
         }
       }
       return updated;
@@ -327,8 +359,16 @@ export const useFitDatabase = (user: User | null) => {
           user_id: user.id,
           log_date: log.log_date,
           weight_kg: log.weight_kg,
-          muscle_mass_kg: log.muscle_mass_kg || null,
           fat_percentage: log.fat_percentage || null,
+          fat_mass_kg: log.fat_mass_kg || null,
+          visceral_fat: log.visceral_fat || null,
+          bmi: log.bmi || null,
+          fat_free_mass_kg: log.fat_free_mass_kg || null,
+          muscle_percentage: log.muscle_percentage || null,
+          muscle_mass_kg: log.muscle_mass_kg || null,
+          bone_mineral_percentage: log.bone_mineral_percentage || null,
+          bone_mineral_kg: log.bone_mineral_kg || null,
+          body_water_percentage: log.body_water_percentage || null,
           waist_cm: log.waist_cm || null,
           notes: log.notes || null
         });

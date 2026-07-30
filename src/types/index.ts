@@ -114,6 +114,8 @@ export interface IngredientMapping {
   reference_id?: string;
 }
 
+export type MenstrualCyclePhase = 'menstrual' | 'follicular' | 'ovulatory' | 'luteal';
+
 export interface FitUserProfile {
   user_id?: string;
   age: number;
@@ -134,6 +136,11 @@ export interface FitUserProfile {
   water_logged_ml?: number;
   daily_sleep_target_hours?: number;
   sleep_logged_hours?: number;
+  nap_logged_hours?: number;
+  has_pcos?: boolean;
+  cycle_phase?: MenstrualCyclePhase;
+  cycle_day?: number;
+  last_period_date?: string;
 }
 
 export interface FitFoodLogItem {
@@ -169,8 +176,16 @@ export interface FitWeightLogItem {
   user_id?: string;
   log_date: string;
   weight_kg: number;
-  muscle_mass_kg?: number;
   fat_percentage?: number;
+  fat_mass_kg?: number;
+  visceral_fat?: number;
+  bmi?: number;
+  fat_free_mass_kg?: number;
+  muscle_percentage?: number;
+  muscle_mass_kg?: number;
+  bone_mineral_percentage?: number;
+  bone_mineral_kg?: number;
+  body_water_percentage?: number;
   waist_cm?: number;
   notes?: string;
 }
