@@ -1757,3 +1757,5 @@ export const FitTab: React.FC<FitTabProps> = ({
     </div>
   );
 };
+
+export default FitTab;
