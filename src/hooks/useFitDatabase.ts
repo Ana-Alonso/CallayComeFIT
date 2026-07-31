@@ -3,29 +3,46 @@ import type { User } from '@supabase/supabase-js';
 import { get_supabase_client } from '../services/supabase_client';
 import type { FitUserProfile, FitFoodLogItem, FitActivity, FitWeightLogItem } from '../types';
 
+const getDailyMetricsMap = (): Record<string, { water_logged_ml: number; sleep_logged_hours: number; nap_logged_hours: number }> => {
+  try {
+    const saved = localStorage.getItem('fit_daily_metrics');
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    return {};
+  }
+};
+
 export const useFitDatabase = (user: User | null) => {
   const [loading, setLoading] = useState(false);
+
   const [userProfile, setUserProfile] = useState<FitUserProfile>(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const metricsMap = getDailyMetricsMap();
+    const todayMetrics = metricsMap[todayStr] || { water_logged_ml: 0, sleep_logged_hours: 0, nap_logged_hours: 0 };
+
     const saved = localStorage.getItem('fit_user_profile');
-    return saved ? JSON.parse(saved) : {
-      age: 28,
-      gender: 'female',
-      height_cm: 168,
-      current_weight_kg: 68.0,
-      target_weight_kg: 63.0,
-      activity_level: 'moderate',
-      fitness_goal: 'fat_loss',
-      bmr: 1460,
-      tdee: 2260,
-      daily_calorie_target: 1808,
-      macro_preset: 'high_protein',
-      custom_protein_pct: 40,
-      custom_carb_pct: 35,
-      custom_fat_pct: 25,
-      daily_water_target_ml: 2500,
-      water_logged_ml: 1750,
-      daily_sleep_target_hours: 8,
-      sleep_logged_hours: 7.5
+    const parsed = saved ? JSON.parse(saved) : {};
+
+    return {
+      age: parsed.age || 28,
+      gender: parsed.gender || 'female',
+      height_cm: parsed.height_cm || 168,
+      current_weight_kg: parsed.current_weight_kg || 68.0,
+      target_weight_kg: parsed.target_weight_kg || 63.0,
+      activity_level: parsed.activity_level || 'moderate',
+      fitness_goal: parsed.fitness_goal || 'fat_loss',
+      bmr: parsed.bmr || 1460,
+      tdee: parsed.tdee || 2260,
+      daily_calorie_target: parsed.daily_calorie_target || 1808,
+      macro_preset: parsed.macro_preset || 'high_protein',
+      custom_protein_pct: parsed.custom_protein_pct || 40,
+      custom_carb_pct: parsed.custom_carb_pct || 35,
+      custom_fat_pct: parsed.custom_fat_pct || 25,
+      daily_water_target_ml: parsed.daily_water_target_ml || 2500,
+      water_logged_ml: todayMetrics.water_logged_ml,
+      daily_sleep_target_hours: parsed.daily_sleep_target_hours || 8,
+      sleep_logged_hours: todayMetrics.sleep_logged_hours,
+      nap_logged_hours: todayMetrics.nap_logged_hours
     };
   });
 
@@ -40,9 +57,10 @@ export const useFitDatabase = (user: User | null) => {
   });
 
   const [activities, setActivities] = useState<FitActivity[]>(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
     const saved = localStorage.getItem('fit_activities');
     return saved ? JSON.parse(saved) : [
-      { id: 'act-1', activity_date: 'Hoy, 10:30 AM', source: 'health_connect', activity_type: 'workout', title: 'Carrera con Reloj / Pulsera de Actividad', duration_minutes: 32, distance_km: 6.4, calories_burned: 380, avg_heart_rate: 152 }
+      { id: 'act-1', activity_date: todayStr, source: 'health_connect', activity_type: 'workout', title: 'Carrera con Reloj / Pulsera de Actividad', duration_minutes: 32, distance_km: 6.4, calories_burned: 380, avg_heart_rate: 152 }
     ];
   });
 
@@ -52,16 +70,6 @@ export const useFitDatabase = (user: User | null) => {
       { id: 'w-1', log_date: new Date().toISOString().split('T')[0], weight_kg: 68.0, muscle_mass_kg: 28.5, fat_percentage: 22.0, waist_cm: 76, notes: 'Registro inicial Fit' }
     ];
   });
-
-  // Métricas diarias persistentes por fecha YYYY-MM-DD
-  const getDailyMetricsMap = (): Record<string, { water_logged_ml: number; sleep_logged_hours: number; nap_logged_hours: number }> => {
-    try {
-      const saved = localStorage.getItem('fit_daily_metrics');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  };
 
   // Reset automático de 24h a medianoche para diario e inicializar métricas diarias (agua/sueño)
   useEffect(() => {

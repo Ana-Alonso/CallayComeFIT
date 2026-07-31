@@ -25,8 +25,9 @@ export const FitDashboardSubTab: React.FC<FitDashboardSubTabProps> = ({
 }) => {
   const todayStr = new Date().toISOString().split('T')[0];
   const todayActivities = activities.filter(act => {
-    if (!act.activity_date || act.activity_date === 'Hoy') return true;
-    return act.activity_date.split('T')[0] === todayStr;
+    if (!act.activity_date) return false;
+    const actDateStr = act.activity_date.split('T')[0];
+    return actDateStr === todayStr;
   });
 
   const totalCaloriesConsumed = foodLogs.reduce((sum, item) => sum + item.calories, 0);
