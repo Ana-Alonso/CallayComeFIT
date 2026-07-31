@@ -53,17 +53,34 @@ export const useFitDatabase = (user: User | null) => {
     ];
   });
 
-  // Reset automático de 24h a medianoche para diario y actividades
+  // Métricas diarias persistentes por fecha YYYY-MM-DD
+  const getDailyMetricsMap = (): Record<string, { water_logged_ml: number; sleep_logged_hours: number; nap_logged_hours: number }> => {
+    try {
+      const saved = localStorage.getItem('fit_daily_metrics');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  // Reset automático de 24h a medianoche para diario e inicializar métricas diarias (agua/sueño)
   useEffect(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const lastReset = localStorage.getItem('fit_last_reset_date');
+    const metricsMap = getDailyMetricsMap();
+    const todayMetrics = metricsMap[todayStr] || { water_logged_ml: 0, sleep_logged_hours: 0, nap_logged_hours: 0 };
 
     if (lastReset && lastReset !== todayStr) {
       setFoodLogs([]);
-      setActivities([]);
       localStorage.setItem('fit_food_logs', JSON.stringify([]));
-      localStorage.setItem('fit_activities', JSON.stringify([]));
     }
+
+    setUserProfile(prev => ({
+      ...prev,
+      water_logged_ml: todayMetrics.water_logged_ml,
+      sleep_logged_hours: todayMetrics.sleep_logged_hours,
+      nap_logged_hours: todayMetrics.nap_logged_hours
+    }));
 
     localStorage.setItem('fit_last_reset_date', todayStr);
   }, []);
@@ -201,6 +218,20 @@ export const useFitDatabase = (user: User | null) => {
     setUserProfile(prev => {
       const updated = typeof newProfile === 'function' ? newProfile(prev) : newProfile;
       localStorage.setItem('fit_user_profile', JSON.stringify(updated));
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      try {
+        const savedMetrics = localStorage.getItem('fit_daily_metrics');
+        const metricsMap = savedMetrics ? JSON.parse(savedMetrics) : {};
+        metricsMap[todayStr] = {
+          water_logged_ml: updated.water_logged_ml || 0,
+          sleep_logged_hours: updated.sleep_logged_hours || 0,
+          nap_logged_hours: updated.nap_logged_hours || 0
+        };
+        localStorage.setItem('fit_daily_metrics', JSON.stringify(metricsMap));
+      } catch (e) {
+        console.error('Error al guardar fit_daily_metrics:', e);
+      }
 
       if (user) {
         const client = get_supabase_client();

@@ -23,12 +23,18 @@ export const FitDashboardSubTab: React.FC<FitDashboardSubTabProps> = ({
   onRemoveActivity,
   onSelectSubTab
 }) => {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayActivities = activities.filter(act => {
+    if (!act.activity_date || act.activity_date === 'Hoy') return true;
+    return act.activity_date.split('T')[0] === todayStr;
+  });
+
   const totalCaloriesConsumed = foodLogs.reduce((sum, item) => sum + item.calories, 0);
   const totalProteinConsumed = foodLogs.reduce((sum, item) => sum + item.protein_g, 0);
   const totalCarbsConsumed = foodLogs.reduce((sum, item) => sum + item.carbs_g, 0);
   const totalFatConsumed = foodLogs.reduce((sum, item) => sum + item.fat_g, 0);
 
-  const totalCaloriesBurned = activities.reduce((sum, item) => sum + item.calories_burned, 0);
+  const totalCaloriesBurned = todayActivities.reduce((sum, item) => sum + item.calories_burned, 0);
   const netCalories = totalCaloriesConsumed - totalCaloriesBurned;
   const targetCalories = userProfile.daily_calorie_target || 2000;
   const remainingCalories = targetCalories - netCalories;
@@ -213,7 +219,7 @@ export const FitDashboardSubTab: React.FC<FitDashboardSubTabProps> = ({
 
       <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px' }}>
         <Box style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Entrenamientos Recientes</h3>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Actividades del Día</h3>
           <button
             onClick={() => onSelectSubTab('activity')}
             style={{ background: 'transparent', border: 'none', color: '#10B981', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
@@ -222,11 +228,11 @@ export const FitDashboardSubTab: React.FC<FitDashboardSubTabProps> = ({
           </button>
         </Box>
 
-        {activities.length === 0 ? (
+        {todayActivities.length === 0 ? (
           <p style={{ color: '#94A3B8', fontSize: '0.9rem' }}>No hay entrenamientos registrados hoy.</p>
         ) : (
           <Box style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {activities.slice(0, 3).map((act) => (
+            {todayActivities.map((act) => (
               <Box key={act.id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                   <strong style={{ display: 'block', fontSize: '0.95rem' }}>{act.title}</strong>
