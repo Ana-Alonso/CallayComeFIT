@@ -1,5 +1,5 @@
 import React from 'react';
-import { Droplet, Moon, Edit2, Trash2, TrendingUp } from 'lucide-react';
+import { Droplet, Moon, Edit2, Trash2, TrendingUp, Award, Flame, CheckCircle2 } from 'lucide-react';
 import { Box } from '../common';
 import type { FitUserProfile, FitFoodLogItem, FitActivity } from '../../types';
 import { FitFemaleHealthCard } from './FitFemaleHealthCard';
@@ -44,6 +44,9 @@ export const FitDashboardSubTab: React.FC<FitDashboardSubTabProps> = ({
   const targetCarbs = Math.round((targetCalories * 0.45) / 4);
   const targetFat = Math.round((targetCalories * 0.25) / 9);
 
+  const isProteinMet = totalProteinConsumed >= targetProtein * 0.8;
+  const isWaterMet = (userProfile.water_logged_ml || 0) >= 2000;
+
   const handleAddWater = (ml: number) => {
     setUserProfile(prev => ({ ...prev, water_logged_ml: (prev.water_logged_ml || 0) + ml }));
   };
@@ -54,6 +57,29 @@ export const FitDashboardSubTab: React.FC<FitDashboardSubTabProps> = ({
 
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* 🏆 Widget de Racha y Medallas de Hábitos Fit */}
+      <Box style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(249,115,22,0.1) 100%)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <Box style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,185,129,0.4)' }}>
+            <Award size={22} color="#fff" />
+          </div>
+          <Box>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Racha Fit Activa <Flame size={16} color="#F97316" />
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Logros nutricionales de hoy</div>
+          </Box>
+        </Box>
+
+        <Box style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '999px', background: isProteinMet ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)', color: isProteinMet ? '#10B981' : '#64748b', border: isProteinMet ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <CheckCircle2 size={13} /> Proteína {isProteinMet ? '100%' : 'en curso'}
+          </span>
+          <span style={{ fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '999px', background: isWaterMet ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)', color: isWaterMet ? '#60A5FA' : '#64748b', border: isWaterMet ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Droplet size={13} /> Agua {isWaterMet ? '2L Logrados' : `${userProfile.water_logged_ml || 0} ml`}
+          </span>
+        </Box>
+      </Box>
       <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
         <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <Box style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
