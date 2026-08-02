@@ -4,17 +4,17 @@
 
 # Calla y Come FIT ⚡
 
-![CI](https://github.com/Ana-Alonso/CallayCome/actions/workflows/ci.yml/badge.svg)
-### Nutrición, Contador de Calorías, Macronutrientes y Sincronización Abierta de Salud
+![CI](https://github.com/Ana-Alonso/CallayComeFIT/actions/workflows/ci.yml/badge.svg)
+### Nutrición, Contador de Calorías, Macronutrientes, Sincronización Abierta y Cumplimiento RGPD
 
-Aplicación web + móvil basada en **Calla y Come** diseñada para el mundo fitness. Combina la planificación de menús y despensa con conteo inteligente de calorías, distribución de macronutrientes, calculadora de TDEE/BMR, importador automático del planificador y sincronización 100% gratuita con **relojes inteligentes, pulseras de actividad, Google Health Connect y lector de archivos GPX/FIT**.
+Aplicación web + móvil basada en **Calla y Come** diseñada para el mundo fitness. Combina la planificación de menús y despensa con conteo inteligente de calorías, distribución de macronutrientes, calculadora de TDEE/BMR, importador automático del planificador, sincronización 100% gratuita con **relojes inteligentes, pulseras de actividad, Google Health Connect y lector de archivos GPX/FIT**, además de integración completa con **OpenFoodFacts**.
 
-[![CI/CD](https://github.com/Ana-Alonso/la-cocina-de-la-abuela/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Ana-Alonso/la-cocina-de-la-abuela/actions/workflows/ci-cd.yml)
 [![Live](https://img.shields.io/badge/🌐%20Live-callaycome.onrender.com-10B981)](https://callaycome.onrender.com)
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?logo=supabase)
 ![Google Health](https://img.shields.io/badge/Health%20Connect-Android-4285F4?logo=android)
+![RGPD Compliant](https://img.shields.io/badge/RGPD-Cumplimiento%20UE-blue)
 
 </div>
 
@@ -32,21 +32,21 @@ Aplicación web + móvil basada en **Calla y Come** diseñada para el mundo fitn
 | ⌚ **Relojes Inteligentes & Health Connect** | Conexión directa y gratuita con cualquier pulsera de actividad o smartwatch a través de Google Health Connect sin APIs de pago ni restricciones. |
 | 📁 **Importador de Archivos .GPX / .FIT** | Carga directa de archivos de ruta o entrenamiento exportados desde tu pulsera o reloj sin cuotas de suscripción. |
 | 📅 **Planificador de Menús & Persistencia de Fecha** | Planificación mensual con persistencia reactiva de la fecha de inicio (`start_date`) e importación en 1-clic del menú asignado para hoy al Diario Fit. |
-| 🔍 **Buscador de Alimentos con Autocompletado** | Buscador inteligente que sugiere alimentos de la base de datos nutricional (BEDCA / USDA) y escala automáticamente las calorías y macros al modificar raciones. |
-| 🍲 **Adaptador de Recetas Fit** | Conversión inteligente de recetas tradicionales de Calla y Come a versiones hiperproteicas y bajas en grasa. |
+| 🔍 **Buscador OpenFoodFacts & SuperMarket API** | Búsqueda directa de alimentos con autocompletado y macros de OpenFoodFacts (EAN/nombre) y precios actualizados de supermercados sin proxies externos de terceros. |
+| 🔒 **Seguridad & Medidor de Contraseña** | Indicador en tiempo real de fortaleza de contraseña (longitud, mayúsculas, números, caracteres especiales), recuperación de contraseña y tokenización JWT segura. |
+| 🍪 **Cumplimiento RGPD & Páginas Legales** | Banner de consentimiento de cookies configurable (almacenamiento local, 0 rastreadores de terceros), Política de Privacidad (`/privacy`), Términos de Servicio (`/terms`) y Política de Cookies (`/cookies`). |
 | 📱 **Sincronización Android Nativa** | Sincronización fluida mediante Capacitor (`npx cap sync android`) con optimización de recursos Gradle para Android. |
 
 ---
 
-## 🔒 Arquitectura de Base de Datos Compartida e Independiente (Híbrida)
+## 🔒 Arquitectura de Seguridad y Privacidad (RGPD)
 
-El proyecto utiliza un **modelo de base de datos no intrusivo** sobre Supabase PostgreSQL.
+El proyecto implementa las directivas del Reglamento General de Protección de Datos (RGPD) de la UE:
 
-- **Usuarios Tradicionales de Calla y Come**: Utilizan la app normalmente sin que las tablas Fit interfieran ni generen errores en su flujo.
-- **Usuarios Calla y Come FIT**: La base de datos extiende sus funcionalidades mediante tablas dedicadas con Row Level Security (RLS):
-  - `fit_user_profiles`: Datos metabólicos, peso objetivo, BMR, TDEE y ratios de macronutrientes.
-  - `fit_daily_food_logs`: Registro diario de comidas consumidas y desglose de macros.
-  - `fit_activities`: Registro de entrenamientos sincronizados desde Google Health Connect, GPX o ingresados manualmente.
+- **Sin Proxies Externos de Terceros**: Eliminada la dependencia de proxies intermedios (como corsproxy); comunicación directa y segura con los backends propios.
+- **Row Level Security (RLS)**: Aislamiento total entre usuarios en Supabase PostgreSQL. Las tablas `fit_user_profiles`, `fit_daily_food_logs`, `fit_activities` e `ingredient_mappings` restringen accesos por `auth.uid()`.
+- **Transparencia de Datos**: Sin cookies ni scripts de seguimiento de terceros (Google Analytics/Facebook Pixel). Las preferencias se almacenan localmente en el dispositivo.
+- **Páginas Legales Accesibles**: Rutas públicas `/privacy`, `/terms` y `/cookies` disponibles sin necesidad de iniciar sesión.
 
 ---
 
@@ -55,6 +55,7 @@ El proyecto utiliza un **modelo de base de datos no intrusivo** sobre Supabase P
 - **Frontend**: React 19 · TypeScript 6 · Vite 5
 - **Estilos**: Modern CSS · Modo Oscuro Atlético (`#0F172A`) · Glassmorphism · MUI
 - **Backend & DB**: Supabase (PostgreSQL + RLS Policies + Realtime)
+- **APIs Externas**: SuperMarket API · OpenFoodFacts API (EAN & Name Search)
 - **Integraciones de Salud**: Google Health Connect (Relojes / Pulseras de Actividad) · Parser de archivos .GPX / .FIT
 - **Móvil Nativo**: Capacitor (Android / iOS)
 - **Tests & Lint**: Vitest · Testing Library · Oxlint
@@ -66,8 +67,8 @@ El proyecto utiliza un **modelo de base de datos no intrusivo** sobre Supabase P
 ### 1. Clonar e instalar dependencias
 
 ```bash
-git clone https://github.com/Ana-Alonso/CallayComeFit.git
-cd CallayComeFit
+git clone https://github.com/Ana-Alonso/CallayComeFIT.git
+cd CallayComeFIT
 npm install
 ```
 
@@ -78,6 +79,7 @@ Crea un archivo `.env` en la raíz del proyecto:
 ```env
 VITE_SUPABASE_URL=tu-supabase-url
 VITE_SUPABASE_ANON_KEY=tu-supabase-anon-key
+VITE_SUPERMARKET_API_BASE_URL=https://supermarketapi-z9yb.onrender.com/api/v1
 ```
 
 ### 3. Iniciar Servidor de Desarrollo
@@ -109,7 +111,8 @@ La aplicación estará disponible en `http://localhost:3000`.
 src/
 ├── components/
 │   ├── fit/           # Módulo Calla y Come FIT (Dashboard, Diario, Macros, Health Sync)
-│   ├── auth/          # Autenticación de usuarios
+│   ├── auth/          # Autenticación con medidor de fortaleza y recuperación
+│   ├── legal/         # Banner de consentimiento de cookies RGPD
 │   ├── planner/       # Planificador de menús mensuales
 │   ├── recipes/       # Catálogo de recetas tradicionales y Fit
 │   ├── pantry/        # Gestión de stock de la despensa con macros
@@ -117,12 +120,14 @@ src/
 │   ├── shopping/      # Generación inteligente de lista de la compra
 │   ├── budget/        # Seguimiento de presupuesto y comparador de supermercados
 │   └── family/        # Sincronización colaborativa familiar
+├── pages/             # Páginas legales (PrivacyPolicy, TermsOfService, CookiePolicy)
 ├── hooks/             # Custom hooks (useGlobalState, useRecipes, etc.)
-├── services/          # Clientes de Supabase & Supermarket API
-├── types/             # Interfaces de TypeScript (FitUserProfile, FitFoodLogItem, etc.)
-└── utils/             # Motor de nutrición (nutrition.ts) y helpers del planificador
-supabase/
-└── migrations/        # Scripts SQL de migraciones (incluye 20260729130000_fit_tables.sql)
+├── services/          # Clientes de Supabase & SuperMarket API
+├── types/             # Interfaces de TypeScript
+└── utils/             # Motor de nutrición (nutrition.ts) y helpers
+public/
+├── robots.txt         # Configuración para motores de búsqueda
+└── sitemap.xml        # Mapa del sitio para indexación
 ```
 
 ---
