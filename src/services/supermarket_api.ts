@@ -94,11 +94,9 @@ export async function searchProducts(
     url = `${SUPERMARKET_API_BASE_URL}/supermercados/${supermarketId.toLowerCase()}/search?q=${cleanQuery}`;
   }
 
-  const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-
   let response: Response;
   try {
-    response = await fetch(corsProxyUrl, {
+    response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -106,10 +104,10 @@ export async function searchProducts(
       }
     });
   } catch (err: any) {
-    console.error('Fetch to Render API via CORS proxy failed:', err);
+    console.error('Fetch to SuperMarket API failed:', err);
     throw new Error(
-      'Error de Conexión: No se pudo contactar con la API de Render a través del proxy CORS. ' +
-      'Por favor, comprueba tu conexión a internet o la disponibilidad del servidor de Render.'
+      'Error de Conexión: No se pudo contactar con la API de supermercados. ' +
+      'Por favor, comprueba tu conexión a internet o la disponibilidad del servidor.'
     );
   }
 

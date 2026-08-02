@@ -24,15 +24,17 @@ Aplicación web + móvil basada en **Calla y Come** diseñada para el mundo fitn
 
 | Módulo Fit ⚡ | Descripción |
 |--------------|-------------|
-| 📊 **Dashboard y Balance Calórico** | Cálculo en tiempo real: $\text{Calorías Restantes} = \text{Meta Base} - \text{Consumidas} + \text{Gasto por Ejercicio}$. Anillos e indicadores de Proteínas (🥩), Carbohidratos (🍚) y Grasas (🥑). |
+| 📊 **Dashboard y Balance Calórico del Día** | Cálculo en tiempo real: $\text{Calorías Restantes} = \text{Meta Base} - \text{Consumidas} + \text{Gasto por Ejercicio de Hoy}$. Anillos e indicadores de Proteínas (🥩), Carbohidratos (🍚) y Grasas (🥑). |
+| 📈 **Evolución Corporal & Progresión Mensual** | Registro de pesaje por fecha diaria (`log_date`) y agrupación mensual de biométricos: Peso, % Grasa, Grasa Visceral, IMC, Masa Magra, Músculo, Mineral Óseo, Agua y Cintura. |
+| 🌙 **Reset Diario (00:00h) & Registro de Hidratación/Sueño** | Persistencia por fecha (`YYYY-MM-DD`) del consumo de agua (+250ml / +500ml) y descanso (sueño + siesta) con reseteo automático a las 00:00h para el nuevo día. |
 | 🧮 **Calculadora TDEE / BMR** | Estimación metabólica precisa usando la fórmula **Mifflin-St Jeor** ajustada al nivel de actividad y objetivo (Déficit -20% para pérdida de grasa, Mantenimiento o Superávit +15%). |
 | 🎛️ **Plantillas & Sliders de Macros** | Plantillas recomendadas (*Alta en Proteínas 40/35/25*, *Equilibrada 30/40/30*, *Baja en Carb 45/20/35*) + **Sliders libres de porcentaje** para ajuste manual fino. |
 | ⌚ **Relojes Inteligentes & Health Connect** | Conexión directa y gratuita con cualquier pulsera de actividad o smartwatch a través de Google Health Connect sin APIs de pago ni restricciones. |
 | 📁 **Importador de Archivos .GPX / .FIT** | Carga directa de archivos de ruta o entrenamiento exportados desde tu pulsera o reloj sin cuotas de suscripción. |
-| 📅 **Importador del Planificador** | Importación en 1-clic del menú asignado para hoy en el *Plan del Mes* de Calla y Come hacia el Diario Nutricional Fit. |
-| 🔍 **Buscador de Alimentos con Autocompletado** | Buscador inteligente que sugiere alimentos de la base de datos nutricional (BEDCA / USDA) y escala automáticamente las calorías y macros al modificar el número de raciones. |
+| 📅 **Planificador de Menús & Persistencia de Fecha** | Planificación mensual con persistencia reactiva de la fecha de inicio (`start_date`) e importación en 1-clic del menú asignado para hoy al Diario Fit. |
+| 🔍 **Buscador de Alimentos con Autocompletado** | Buscador inteligente que sugiere alimentos de la base de datos nutricional (BEDCA / USDA) y escala automáticamente las calorías y macros al modificar raciones. |
 | 🍲 **Adaptador de Recetas Fit** | Conversión inteligente de recetas tradicionales de Calla y Come a versiones hiperproteicas y bajas en grasa. |
-| 💧 **Tracker de Hidratación** | Registro rápido de agua (+250ml / +500ml) con nivel visual interactivo. |
+| 📱 **Sincronización Android Nativa** | Sincronización fluida mediante Capacitor (`npx cap sync android`) con optimización de recursos Gradle para Android. |
 
 ---
 
