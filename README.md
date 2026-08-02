@@ -9,7 +9,7 @@
 
 Aplicación web + móvil basada en **Calla y Come** diseñada para el mundo fitness. Combina la planificación de menús y despensa con conteo inteligente de calorías, distribución de macronutrientes, calculadora de TDEE/BMR, importador automático del planificador, sincronización 100% gratuita con **relojes inteligentes, pulseras de actividad, Google Health Connect y lector de archivos GPX/FIT**, además de integración completa con **OpenFoodFacts**.
 
-[![Live](https://img.shields.io/badge/🌐%20Live-callaycome.onrender.com-10B981)](https://callaycome.onrender.com)
+[![Live](https://img.shields.io/badge/🌐%20Live-callaycome.onrender.com-10B981)](https://callaycomefit.onrender.com/)
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?logo=supabase)
