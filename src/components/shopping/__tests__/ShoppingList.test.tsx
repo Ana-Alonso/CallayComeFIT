@@ -45,7 +45,7 @@ describe('ShoppingList Component', () => {
     const inputName = screen.getByPlaceholderText('Añadir ítem manual...');
     const inputQty = screen.getByRole('spinbutton');
     const selectUnit = screen.getByRole('combobox');
-    const addButton = screen.getByRole('button', { name: '+ Añadir' });
+    const addButton = screen.getByRole('button', { name: /Añadir/i });
 
     fireEvent.change(inputName, { target: { value: 'Leche' } });
     fireEvent.change(inputQty, { target: { value: '4' } });
