@@ -229,13 +229,6 @@ export const Planner = ({
             clase_css="btn-sm"
           />
           <Boton
-            texto="⚡ Auto-Generar"
-            on_click={on_auto_generate}
-            variante="contained"
-            color="success"
-            clase_css="btn-sm"
-          />
-          <Boton
             texto="🗑️ Limpiar"
             on_click={on_clear}
             variante="outlined"
