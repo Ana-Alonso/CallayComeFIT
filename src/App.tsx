@@ -138,13 +138,20 @@ export const App = () => {
     update_accessibility,
     speak,
     handle_delete_account,
-    db_ingredients
+    db_ingredients,
+    is_family_active
   } = useGlobalState();
 
   const [mostrar_modo_nevera, set_mostrar_modo_nevera] = useState(false);
   const [mostrar_centro_notif, set_mostrar_centro_notif] = useState(false);
   const [lavaplatos, set_lavaplatos] = useState<string | null>(null);
   const [max_complaints, set_max_complaints] = useState<number>(0);
+
+  useEffect(() => {
+    if (is_family_active && active_tab === 'fit') {
+      set_active_tab('plan');
+    }
+  }, [is_family_active, active_tab, set_active_tab]);
 
   useEffect(() => {
     const setupDeepLink = async () => {
@@ -437,14 +444,16 @@ export const App = () => {
           <Users />
           <Box component="span">Familia</Box>
         </NavTabButton>
-        <NavTabButton
-          active={active_tab === 'fit'}
-          onClick={() => { set_active_tab('fit'); speak("Calla y Come Fit"); }}
-          style={{ borderColor: active_tab === 'fit' ? '#10B981' : undefined }}
-        >
-          <Flame style={{ color: active_tab === 'fit' ? '#10B981' : '#F97316' }} />
-          <Box component="span" style={{ color: active_tab === 'fit' ? '#10B981' : undefined, fontWeight: 700 }}>Fit ⚡</Box>
-        </NavTabButton>
+        {!is_family_active && (
+          <NavTabButton
+            active={active_tab === 'fit'}
+            onClick={() => { set_active_tab('fit'); speak("Calla y Come Fit"); }}
+            style={{ borderColor: active_tab === 'fit' ? '#10B981' : undefined }}
+          >
+            <Flame style={{ color: active_tab === 'fit' ? '#10B981' : '#F97316' }} />
+            <Box component="span" style={{ color: active_tab === 'fit' ? '#10B981' : undefined, fontWeight: 700 }}>Fit ⚡</Box>
+          </NavTabButton>
+        )}
       </NavContainer>
 
       <Suspense fallback={
