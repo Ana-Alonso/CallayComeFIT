@@ -122,7 +122,7 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
               style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(16,185,129,0.4)', color: '#FFF', padding: '10px 12px', borderRadius: '8px', fontSize: '0.9rem' }}
             />
           </Box>
-          <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
             <Box>
               <label style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Peso (kg) *</label>
               <input
@@ -159,7 +159,7 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
             </Box>
           </Box>
 
-          <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
             <Box>
               <label style={{ fontSize: '0.78rem', color: '#EF4444', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Grasa Visceral</label>
               <input
@@ -195,7 +195,7 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
             </Box>
           </Box>
 
-          <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
             <Box>
               <label style={{ fontSize: '0.78rem', color: '#3B82F6', fontWeight: 700, display: 'block', marginBottom: '4px' }}>% Músculo (%)</label>
               <input
@@ -231,7 +231,7 @@ export const FitAddWeightModal: React.FC<FitAddWeightModalProps> = ({
             </Box>
           </Box>
 
-          <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
             <Box>
               <label style={{ fontSize: '0.78rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>% Mineral Óseo (%)</label>
               <input

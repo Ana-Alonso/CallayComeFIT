@@ -158,8 +158,8 @@ export const FitAddFoodModal: React.FC<FitAddFoodModalProps> = ({
   };
 
   return (
-    <Box style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '500px' }}>
+    <Box style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
+      <Box style={{ background: '#121826', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '16px 18px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ margin: '0 0 12px 0' }}>Añadir Alimento al Diario Nutricional</h3>
 
         <Box style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', padding: '12px', borderRadius: '10px', fontSize: '0.8rem', color: '#93C5FD', marginBottom: '14px', lineHeight: '1.4' }}>
