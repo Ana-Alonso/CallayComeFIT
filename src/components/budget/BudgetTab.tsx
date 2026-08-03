@@ -83,6 +83,25 @@ export const BudgetTab = ({
   const [confirm_unit, setConfirmUnit] = useState<string>('unidades');
   const [confirm_price, setConfirmPrice] = useState<number>(0);
 
+  // Household budget scope states (individual vs family)
+  const [budget_scope, set_budget_scope] = useState<'family' | 'individual'>(() => {
+    return (localStorage.getItem('budget_scope') as 'family' | 'individual') || 'family';
+  });
+  const [household_members, set_household_members] = useState<number>(() => {
+    return Number(localStorage.getItem('budget_household_members')) || 2;
+  });
+
+  const handle_change_scope = (scope: 'family' | 'individual') => {
+    set_budget_scope(scope);
+    localStorage.setItem('budget_scope', scope);
+  };
+
+  const handle_change_members = (members: number) => {
+    const val = Math.max(1, Math.min(12, members));
+    set_household_members(val);
+    localStorage.setItem('budget_household_members', String(val));
+  };
+
   // Get start and end day of selected week
   const get_week_day_range = (weekNum: number) => {
     if (weekNum === 1) return { start: 1, end: 7, label: 'Semana 1 (Días 1-7)' };
@@ -94,9 +113,10 @@ export const BudgetTab = ({
   const week_range = get_week_day_range(selected_week);
   const week_plan = meal_plan.filter(dp => dp.day >= week_range.start && dp.day <= week_range.end);
 
-  // 1. Gather all required ingredients for the selected week's recipes
+  // 1. Gather all required ingredients for the selected week's recipes (scaled by individual / family members)
   const gather_weekly_ingredients = () => {
     const required: Record<string, { quantity: number; unit: string; recipeCount: number }> = {};
+    const target_members = budget_scope === 'individual' ? 1 : Math.max(1, household_members);
     
     week_plan.forEach(dayPlan => {
       const all_recipe_ids = [
@@ -108,9 +128,13 @@ export const BudgetTab = ({
       all_recipe_ids.forEach(recipeId => {
         const recipe = recipes.find(r => r.id === recipeId);
         if (recipe && recipe.ingredients) {
+          const recipePortions = (recipe as any).portions || (recipe as any).servings || 1;
+          const scaleFactor = target_members / recipePortions;
+
           recipe.ingredients.forEach(ing => {
             const key = ing.name.toLowerCase().trim();
-            const norm = normalize_unit(ing.quantity, ing.unit);
+            const scaledQty = ing.quantity * scaleFactor;
+            const norm = normalize_unit(scaledQty, ing.unit);
 
             if (required[key]) {
               const storedNorm = normalize_unit(required[key].quantity, required[key].unit);
@@ -118,7 +142,7 @@ export const BudgetTab = ({
                 required[key].quantity = storedNorm.value + norm.value;
                 required[key].unit = storedNorm.baseUnit;
               } else {
-                required[key].quantity += ing.quantity;
+                required[key].quantity += scaledQty;
               }
               required[key].recipeCount += 1;
             } else {
@@ -130,7 +154,6 @@ export const BudgetTab = ({
     });
 
     return Object.keys(required).map(key => {
-      // Find original display casing
       let displayName = key;
       for (const r of recipes) {
         const ing = r.ingredients?.find(i => i.name.toLowerCase().trim() === key);
@@ -162,7 +185,7 @@ export const BudgetTab = ({
         supermarket = mapping.supermarket_id;
       } else {
         // Fallback estimated cost based on quantity
-        cost = 0.50 * req.recipeCount; // generic estimate
+        cost = 0.50 * req.recipeCount * (budget_scope === 'individual' ? 1 : (household_members / 2));
       }
 
       return {
@@ -175,11 +198,14 @@ export const BudgetTab = ({
         supermarket,
         recipeCount: req.recipeCount
       };
-    }).sort((a, b) => b.cost - a.cost); // sort by cost impact
+    }).sort((a, b) => b.cost - a.cost);
   };
 
   const weekly_ingredients = gather_weekly_ingredients();
   const total_weekly_cost = Number(weekly_ingredients.reduce((sum, item) => sum + item.cost, 0).toFixed(2));
+  const active_members_count = budget_scope === 'individual' ? 1 : Math.max(1, household_members);
+  const cost_per_person = Number((total_weekly_cost / active_members_count).toFixed(2));
+  const daily_cost_per_person = Number((cost_per_person / 7).toFixed(2));
 
   // Progress Bar styling details
   const cost_percentage = Math.min((total_weekly_cost / (weekly_budget || 1)) * 100, 100);
@@ -213,9 +239,7 @@ export const BudgetTab = ({
     setIsUpdatingAll(true);
     try {
       let count = 0;
-      // Loop through all weekly ingredients
       for (const ing of weekly_ingredients) {
-        // If it is not mapped, or if its supermarket doesn't match the preferred supermarket (if specific)
         const needsMapping = !ing.isMapped || 
           (preferred_supermarket !== 'todos' && preferred_supermarket !== 'cheapest' && ing.supermarket !== preferred_supermarket);
           
@@ -223,7 +247,6 @@ export const BudgetTab = ({
           const queryStr = ing.name;
           const results = await searchProducts(queryStr, preferred_supermarket === 'cheapest' ? undefined : preferred_supermarket);
           if (results.length > 0) {
-            // Find the cheapest one
             const cheapest = results.reduce((min, p) => p.precio < min.precio ? p : min, results[0]);
             const parsed = parse_product_info(cheapest.nombre);
             
@@ -286,12 +309,13 @@ export const BudgetTab = ({
 
   return (
     <PageContainer>
-      <TitleH2>Presupuesto Semanal 💸</TitleH2>
-      <TextMuted>Compara precios en tiempo real y estima el coste de tus menús planificados.</TextMuted>
+      <TitleH2>Presupuesto Inteligente y Comparador</TitleH2>
+      <TextMuted>
+        Calcula el gasto semanal exacto de tu menú planificado comparando precios en supermercados reales, ajustado para usuarios individuales o familias.
+      </TextMuted>
 
       <Spacer height={15} />
 
-      {/* GLOBAL BUDGET ACTIVATION TOGGLE */}
       <CardContainer style={{ 
         display: 'flex', 
         alignItems: 'center', 
@@ -327,16 +351,16 @@ export const BudgetTab = ({
       {!budget_filter_active && (
         <Box style={{
           backgroundColor: 'rgba(255, 167, 38, 0.08)',
-          border: '1px solid rgba(255, 167, 38, 0.2)',
-          borderRadius: '12px',
+          border: '1px solid rgba(255, 167, 38, 0.25)',
+          borderRadius: '10px',
           padding: '12px 16px',
+          marginBottom: '15px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '12px',
           color: '#ffa726',
           fontSize: '13px',
-          textAlign: 'left',
-          marginBottom: '15px'
+          textAlign: 'left'
         }}>
           <AlertCircle size={18} />
           <div>
@@ -348,6 +372,30 @@ export const BudgetTab = ({
       {/* 1. CONFIGURATION CARD */}
       <CardContainer>
         <PantryInputGrid style={{ gap: '16px' }}>
+          <FormGroup>
+            <FormLabel>Ámbito del Presupuesto</FormLabel>
+            <SelectControl
+              value={budget_scope}
+              onChange={e => handle_change_scope(e.target.value as 'family' | 'individual')}
+            >
+              <option value="family">👨‍👩‍👧‍👦 Presupuesto Familiar</option>
+              <option value="individual">👤 Presupuesto Individual (1 persona)</option>
+            </SelectControl>
+          </FormGroup>
+
+          {budget_scope === 'family' && (
+            <FormGroup>
+              <FormLabel>Nº Comensales / Personas</FormLabel>
+              <CampoTexto
+                etiqueta=""
+                valor={household_members}
+                on_change={(val) => handle_change_members(Number(val))}
+                tipo="number"
+                marcador_posicion="2"
+              />
+            </FormGroup>
+          )}
+
           <FormGroup>
             <FormLabel>Presupuesto Semanal (€)</FormLabel>
             <CampoTexto
@@ -409,14 +457,31 @@ export const BudgetTab = ({
       <CardContainer style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden' }}>
         <Box style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
           <Box style={{ textAlign: 'left' }}>
-            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>
-              Coste Estimado ({week_range.label})
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>
+                Coste Estimado ({week_range.label})
+              </span>
+              <span style={{
+                fontSize: '10px',
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                color: 'rgba(255,255,255,0.7)',
+                fontWeight: 600
+              }}>
+                {budget_scope === 'family' ? `👨‍👩‍👧‍👦 Familiar (${household_members} personas)` : `👤 Individual (1 persona)`}
+              </span>
+            </div>
+
             <div style={{ fontSize: '32px', fontWeight: '800', color: progress_color, marginTop: '4px' }}>
               {total_weekly_cost.toFixed(2)} €
               <span style={{ fontSize: '16px', fontWeight: '400', color: 'rgba(255,255,255,0.4)', marginLeft: '6px' }}>
                 de {weekly_budget.toFixed(2)} €
               </span>
+            </div>
+
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>
+              <strong>{cost_per_person.toFixed(2)} €</strong> / persona a la semana ({daily_cost_per_person.toFixed(2)} € / día por persona)
             </div>
           </Box>
 
