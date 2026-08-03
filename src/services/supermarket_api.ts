@@ -381,3 +381,83 @@ export async function populateSuperMarketProductMacros(): Promise<{ success: boo
     return { success: false, count: 0 };
   }
 }
+
+export interface SupermarketBasketResult {
+  name: string;
+  id: string;
+  totalCost: number;
+  logoColor: string;
+  badge?: string;
+  matchedCount: number;
+}
+
+export async function calculateBasketSupermarketComparison(
+  shoppingItems: Array<{ ingredient_name: string; quantity: number; unit: string; purchased?: boolean }>
+): Promise<SupermarketBasketResult[]> {
+  const pendingItems = shoppingItems.filter(i => !i.purchased);
+  if (pendingItems.length === 0) return [];
+
+  const supermarketConfigs: Record<string, { name: string; color: string }> = {
+    mercadona: { name: 'Mercadona', color: '#10b981' },
+    aldi: { name: 'Aldi', color: '#3b82f6' },
+    dia: { name: 'Dia', color: '#ef4444' },
+    eroski: { name: 'Eroski', color: '#f59e0b' },
+    carrefour: { name: 'Carrefour', color: '#8b5cf6' }
+  };
+
+  try {
+    const { data: productos, error } = await supermarketSupabase
+      .from('productos')
+      .select('nombre, precio, supermercado_id');
+
+    const productList = (error || !productos) ? [] : productos;
+
+    const results: SupermarketBasketResult[] = Object.entries(supermarketConfigs).map(([supId, cfg]) => {
+      const supProds = productList.filter((p: any) => p.supermercado_id === supId);
+      const avgPrice = supProds.length > 0
+        ? supProds.reduce((sum: number, p: any) => sum + Number(p.precio), 0) / supProds.length
+        : 1.65;
+
+      let total = 0;
+      let matchedCount = 0;
+
+      pendingItems.forEach(item => {
+        const cleanName = item.ingredient_name.toLowerCase().trim();
+        const match = supProds.find((p: any) => {
+          const pName = p.nombre.toLowerCase();
+          return pName.includes(cleanName) || cleanName.split(' ').some(w => w.length > 3 && pName.includes(w));
+        });
+
+        if (match) {
+          total += Number(match.precio);
+          matchedCount++;
+        } else {
+          total += avgPrice;
+        }
+      });
+
+      return {
+        id: supId,
+        name: cfg.name,
+        totalCost: Number(total.toFixed(2)),
+        logoColor: cfg.color,
+        matchedCount
+      };
+    });
+
+    results.sort((a, b) => a.totalCost - b.totalCost);
+
+    if (results.length > 0) {
+      results[0].badge = 'Más Económico 💰';
+    }
+    const merc = results.find(r => r.id === 'mercadona');
+    if (merc && merc !== results[0]) {
+      merc.badge = 'Más Recomendado 🥇';
+    }
+
+    return results;
+  } catch (err) {
+    console.error('Error calculando cesta en supermercados:', err);
+    return [];
+  }
+}
