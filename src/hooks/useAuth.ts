@@ -1,7 +1,7 @@
 import type { Profile, FamilyMember } from '../types';
 import { get_supabase_client } from '../services/supabase_client';
 import { supermarketSupabase } from '../services/supermarket_api';
-import { validateEmailSecurity } from '../utils/email_verifier';
+import { validateEmailSecurity, normalizeEmail } from '../utils/email_verifier';
 
 interface UseAuthParams {
   set_profile: (profile: Profile | null) => void;
@@ -133,7 +133,8 @@ export const useAuth = ({
   const handle_login = async (email: string, pass: string): Promise<boolean> => {
     const supabase = get_supabase_client();
     if (!supabase) return false;
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    const targetEmail = normalizeEmail(email);
+    const { error } = await supabase.auth.signInWithPassword({ email: targetEmail, password: pass });
     if (error) {
       trigger_push("Error de Acceso", error.message);
       return false;
@@ -152,7 +153,7 @@ export const useAuth = ({
 
     const supabase = get_supabase_client();
     if (!supabase) return false;
-    const targetEmail = emailValidation.normalizedEmail || email.trim();
+    const targetEmail = emailValidation.normalizedEmail || normalizeEmail(email);
     const { data, error } = await supabase.auth.signUp({ email: targetEmail, password: pass });
     if (error) {
       trigger_push("Error de Registro", error.message);
@@ -173,9 +174,10 @@ export const useAuth = ({
   const resend_verification_email = async (email: string): Promise<boolean> => {
     const supabase = get_supabase_client();
     if (!supabase) return false;
+    const targetEmail = normalizeEmail(email);
     const { error } = await supabase.auth.resend({
       type: 'signup',
-      email: email.trim()
+      email: targetEmail
     });
     if (error) {
       trigger_push("Error al reenviar email", error.message);
@@ -216,7 +218,8 @@ export const useAuth = ({
     const supabase = get_supabase_client();
     if (!supabase) return false;
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: oldPass });
+    const targetEmail = normalizeEmail(email);
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: targetEmail, password: oldPass });
     if (signInError) {
       trigger_push("Error", "La contraseña actual es incorrecta.");
       return false;

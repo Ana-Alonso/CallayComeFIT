@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { validateEmailSecurity } from '../email_verifier';
+import { validateEmailSecurity, normalizeEmail } from '../email_verifier';
 
 describe('Email Verifier Security', () => {
+  it('should normalize Gmail address by stripping dots during login/signup', () => {
+    expect(normalizeEmail('u.s.e.r.name@gmail.com')).toBe('username@gmail.com');
+    expect(normalizeEmail('USER.Name@Gmail.Com ')).toBe('username@gmail.com');
+  });
   it('should accept valid standard email addresses', () => {
     const res = validateEmailSecurity('usuario.ejemplo@gmail.com');
     expect(res.isValid).toBe(true);
