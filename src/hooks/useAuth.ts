@@ -167,7 +167,7 @@ export const useAuth = ({
       );
       return false;
     }
-    trigger_push("Registro exitoso 🎉", "Tu cuenta ha sido creada y tu correo verificado.");
+    trigger_push("Registro exitoso 🎉", "Tu cuenta ha sido creada correctamente.");
     return true;
   };
 
